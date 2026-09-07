@@ -1,9 +1,13 @@
-import type { InspirationItem } from "@/src/domain/inspiration";
+import type { SavedItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
+import { useEffect, useState } from "react";
 
-export function CoverArt({ item, large = false }: { item: InspirationItem; large?: boolean }) {
-  if (item.cover.image) {
-    return <img className={cn("cover-image", large && "cover-large")} src={item.cover.image} alt={`${item.title} 封面`} />;
+export function CoverArt({ item, large = false }: { item: SavedItem; large?: boolean }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [item.cover.image]);
+
+  if (item.cover.image && !imageFailed) {
+    return <img className={cn("cover-image", large && "cover-large")} src={item.cover.image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => setImageFailed(true)} />;
   }
   return (
     <div

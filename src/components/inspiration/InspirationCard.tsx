@@ -1,53 +1,60 @@
-import { RiArrowRightUpLine } from "@remixicon/react";
+import { RiArrowRightUpLine, RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
 import { useLayoutEffect, useRef } from "react";
 import { Badge } from "@/src/components/ui/Badge";
-import type { InspirationItem } from "@/src/domain/inspiration";
+import type { SavedItem } from "@/src/domain/inspiration";
+import { cn } from "@/src/lib/cn";
 import { CoverArt } from "./CoverArt";
 
-export function InspirationCard({ item, onOpen, onTagClick, masonry = false }: { item: InspirationItem; onOpen: () => void; onTagClick: (tag: string) => void; masonry?: boolean }) {
+export type InspirationLayout = "cards" | "list";
+
+interface InspirationCardProps {
+  item: SavedItem;
+  onOpen: () => void;
+  onTagClick: (tag: string) => void;
+  onToggleFavorite?: () => void;
+  layout?: InspirationLayout;
+  masonry?: boolean;
+}
+
+export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, layout = "cards", masonry = false }: InspirationCardProps) {
   const cardRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     const card = cardRef.current;
     if (!card || !masonry) return;
-
-    const updateSpan = () => {
-      const height = card.getBoundingClientRect().height;
-      card.style.gridRowEnd = `span ${Math.ceil(height + 12)}`;
-    };
-
+    const updateSpan = () => { card.style.gridRowEnd = `span ${Math.ceil(card.getBoundingClientRect().height + 12)}`; };
     updateSpan();
     const observer = new ResizeObserver(updateSpan);
     observer.observe(card);
-    return () => {
-      observer.disconnect();
-      card.style.removeProperty("grid-row-end");
-    };
+    return () => { observer.disconnect(); card.style.removeProperty("grid-row-end"); };
   }, [masonry]);
 
+  const body = <div className="card-body"><a href={item.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><h2>{item.title}</h2></a>{item.description ? <p>{item.description}</p> : null}</div>;
+  const cover = <div className="card-cover-wrap"><CoverArt item={item} /></div>;
+  const tags = item.tags.length > 0 ? <footer className="card-tags">{item.tags.map((tag) => <Badge key={tag} variant="neutral" onClick={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}</footer> : null;
+  const followContent = <div className="follow-profile">{item.siteIcon ? <img className="follow-avatar" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}{body}</div>;
+
   return (
-    <article ref={cardRef} className="inspiration-card" tabIndex={0} onClick={onOpen} onKeyDown={(event) => event.key === "Enter" && onOpen()}>
+    <article ref={cardRef} className={cn("inspiration-card", `kind-${item.kind}`, layout === "list" && "is-list")} tabIndex={0} onClick={onOpen} onKeyDown={(event) => event.key === "Enter" && onOpen()}>
       <header className="card-source-row">
-        <div>{item.siteIcon ? <img className="source-mark" src={item.siteIcon} alt="" /> : null}<span>{item.siteHost}</span></div>
+        <div>{item.siteIcon ? <img className="source-mark" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}<span>{item.siteHost}</span></div>
         <div className="source-actions">
+          {onToggleFavorite && <button className={cn("favorite-button", item.isFavorite && "is-active")} type="button" aria-label={item.isFavorite ? "取消星标" : "添加星标"} aria-pressed={item.isFavorite} onClick={(event) => { event.stopPropagation(); onToggleFavorite(); }}>{item.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />}</button>}
           <a className="card-source-link" href={item.url} target="_blank" rel="noreferrer" aria-label="打开原网页" onClick={(event) => event.stopPropagation()}><RiArrowRightUpLine size={16} /></a>
         </div>
       </header>
-      <div className="card-cover-wrap">
-        <CoverArt item={item} />
+      <div className="card-content-region">
+        {layout === "cards" ? <>
+          {item.kind === "website" ? <div className="card-main">{cover}{body}</div> : null}
+          {item.kind === "article" ? <div className="article-content">{body}</div> : null}
+          {item.kind === "follow" ? followContent : null}
+        </> : <div className="list-card-content">
+          {item.kind === "website" ? <>{cover}<div className="list-card-copy">{body}</div></> : null}
+          {item.kind === "article" ? <div className="list-card-copy">{body}</div> : null}
+          {item.kind === "follow" ? followContent : null}
+        </div>}
+        {tags}
       </div>
-      <div className="card-body">
-        <a href={item.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-          <h2>{item.title}</h2>
-        </a>
-        <p>{item.description}</p>
-      </div>
-      {(item.note || item.tags.length > 0) && <footer className="card-note">
-        {item.note && <p>{item.note}</p>}
-        <div className="tag-list">
-          {item.tags.map((tag) => <Badge key={tag} onClick={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}
-        </div>
-      </footer>}
     </article>
   );
 }

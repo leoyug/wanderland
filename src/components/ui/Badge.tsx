@@ -1,6 +1,10 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/src/lib/cn";
 
-export function Badge({ className, children, ...props }: HTMLAttributes<HTMLSpanElement>) {
-  return <span className={cn("badge", className)} {...props}><span aria-hidden="true">#</span>{children}</span>;
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  variant?: "accent" | "neutral";
+}
+
+export function Badge({ className, children, variant = "accent", ...props }: BadgeProps) {
+  return <span className={cn("badge", `badge-${variant}`, className)} {...props}><span aria-hidden="true">#</span>{children}</span>;
 }

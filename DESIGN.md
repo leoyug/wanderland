@@ -1,89 +1,157 @@
 ---
-name: Wanderly V0.1
-description: 基于 Figma「V0.1」页面的暖灰收藏工作台。
+name: Wanderland V0.2
+description: Wanderland V0.2 紧凑暖灰收藏工作台设计系统。
+colorSpace: display-p3
 colors:
+  canvas: "color(display-p3 0.95479 0.94549 0.93104)"
+  surface: "color(display-p3 1 1 1)"
+  surface-secondary: "color(display-p3 0.96401 0.96091 0.95728)"
+  surface-subtle: "color(display-p3 0.96401 0.96091 0.95728)"
+  surface-muted: "color(display-p3 0.90636 0.89086 0.86205)"
+  border-default: "color(display-p3 0.94769 0.94143 0.93052)"
+  border-subtle: "color(display-p3 0.92989 0.91439 0.89269)"
+  border-strong: "color(display-p3 0.86647 0.84785 0.81899)"
+  ink: "color(display-p3 0.18039 0.18039 0.18039)"
+  text: "color(display-p3 0.32157 0.32157 0.32157)"
+  text-muted: "color(display-p3 0.43922 0.43922 0.43922)"
+  text-faint: "color(display-p3 0.55686 0.55686 0.57475)"
+  copyright: "color(display-p3 0.68235 0.68235 0.69665)"
+  card-border: "color(display-p3 0.89412 0.89412 0.89412)"
+  media-border: "color(display-p3 0.9451 0.9451 0.9451)"
+  shortcut-surface: "color(display-p3 0.94902 0.94902 0.96689)"
+  scrollbar-thumb: "color(display-p3 0.71291 0.69112 0.66215)"
+  scrollbar-thumb-hover: "color(display-p3 0.56457 0.54590 0.52057)"
+  scrollbar-thumb-active: "color(display-p3 0.43922 0.43922 0.43922)"
+  brand: "color(display-p3 1 0.4627 0.0549)"
+  brand-hover: "color(display-p3 0.91 0.42106 0.04996)"
+  accent: "color(display-p3 1 0.4627 0.0549)"
+  accent-primary-bg: "color(display-p3 1 0.4627 0.0549 / 10%)"
+  accent-primary-border: "color(display-p3 1 0.4627 0.0549 / 20%)"
+  accent-soft: "color(display-p3 1 0.94627 0.90549)"
+  info: "color(display-p3 0.25975 0.41075 0.57373)"
+  info-soft: "color(display-p3 0.90124 0.93207 0.96133)"
+  success: "color(display-p3 0.27868 0.42265 0.33286)"
+  success-soft: "color(display-p3 0.90271 0.93966 0.91542)"
+  warning: "color(display-p3 0.51395 0.36121 0.11058)"
+  warning-soft: "color(display-p3 0.95331 0.91912 0.82988)"
+  danger: "color(display-p3 1 0.32157 0.32157)"
+  danger-soft: "color(display-p3 0.9566 0.9005 0.88862)"
+srgbFallbacks:
   canvas: "#f4f1ed"
   surface: "#ffffff"
-  surface-subtle: "#f8f6f3"
-  surface-muted: "#ece6de"
-  border-subtle: "#e9e3dc"
-  border-strong: "#d8d0c7"
-  ink: "#181512"
-  text: "#2c2925"
-  text-muted: "#5f5a54"
-  text-faint: "#69645e"
-  brand: "#e97603"
-  brand-hover: "#d96d00"
-  accent: "#e97603"
-  accent-soft: "#f1ebe5"
+  surface-secondary: "#f6f5f4"
+  surface-subtle: "#f6f5f4"
+  surface-muted: "#e8e3db"
+  border-default: "#f2f0ed"
+  border-subtle: "#eee9e3"
+  border-strong: "#ded8d0"
+  ink: "#2e2e2e"
+  text: "#525252"
+  text-muted: "#707070"
+  text-faint: "#8e8e93"
+  copyright: "#aeaeb2"
+  card-border: "#e4e4e4"
+  media-border: "#f1f1f1"
+  shortcut-surface: "#f2f2f7"
+  scrollbar-thumb: "#b7b0a8"
+  scrollbar-thumb-hover: "#918b84"
+  scrollbar-thumb-active: "#707070"
+  brand: "#ff760e"
+  brand-hover: "#e96a08"
+  accent-primary-bg: "rgb(255 118 14 / 10%)"
+  accent-primary-border: "rgb(255 118 14 / 20%)"
+  accent-soft: "#fff0e5"
   info: "#356a96"
   info-soft: "#e4eef6"
   success: "#3b6d53"
   success-soft: "#e4f0e9"
   warning: "#8a5a00"
   warning-soft: "#f5ead1"
-  danger: "#b6463a"
+  danger: "#ff5252"
   danger-soft: "#f7e5e2"
 typography:
   brand:
-    fontFamily: "Geist Mono Variable, PingFang SC, monospace"
-    fontSize: "26px"
-    fontWeight: 650
+    fontFamily: "Dinish Condensed, Arial Narrow, Geist Mono Variable, PingFang SC, sans-serif"
+    fontSize: "28px"
+    fontWeight: 800
     lineHeight: 1.2
     letterSpacing: "-0.01em"
   interface:
-    fontFamily: "Geist Mono Variable, PingFang SC, system-ui, sans-serif"
+    fontFamily: "Wanderland CJK, Geist Mono Variable, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 500
     lineHeight: 1.5
   card:
-    fontFamily: "Geist Mono Variable, PingFang SC, SFMono-Regular, Consolas, monospace"
+    fontFamily: "Wanderland CJK, Geist Mono Variable, SFMono-Regular, Consolas, monospace"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: "24px"
 rounded:
+  tag: "4px"
+  small: "6px"
   control: "10px"
   card: "12px"
   media: "8px"
   pill: "48px"
+  floating-menu: "22px"
 ---
 
-# Design System: Wanderly V0.1
+# Design System: Wanderland V0.2
 
 ## 视觉基准
 
-当前界面的权威视觉来源是 Figma 文件「收藏库」中的 `V0.1 / 主页`（节点 `186:5021`）。产品与技术边界仍以 `PRODUCT.md`、`TECH-STACK.md` 为准；视觉文字、字体、色号、间距和站点资源以该设计稿为准。
+当前界面的权威视觉来源是 Figma 文件「收藏库」中的 `V0.1.1 / 主页`（节点 `360:391`）。产品与技术边界仍以 `PRODUCT.md`、`TECH-STACK.md` 为准；视觉文字、字体、色号、间距和站点资源以该设计稿为准。
 
-界面采用暖灰画布、纯白侧栏与纯白卡片。Wanderly 的唯一品牌主色为 `#e97603`，统一用于品牌、链接、焦点、标签、侧栏选中态和主要操作。卡片内容使用高密度等宽字体，封面承担主要视觉信息。
+界面采用暖灰画布、纯白侧栏与纯白卡片。Wanderland 的品牌主色以 `color(display-p3 1 0.4627 0.0549)` 为权威值，统一用于品牌、焦点、标签、侧栏选中态和主要操作；`#ff760e` 只是不支持 P3 时的兼容回退。卡片内容保持紧凑，封面承担主要视觉信息。
 
 ## 颜色系统
 
-- **品牌层**：`brand / accent #e97603`、`brand-hover #d96d00`、`accent-soft #f1ebe5`。主色负责品牌和交互，悬停色仅用于状态反馈，浅色用于标签及选中表面。
-- **表面层**：`canvas #f4f1ed` 是页面基底；`surface #ffffff` 是卡片和侧栏；`surface-subtle #f8f6f3` 是备注区；`surface-muted #ece6de` 是分段控件和快捷键。
-- **文字层**：`ink #181512` 用于标题；`text #2c2925` 用于正文；`text-muted #5f5a54` 用于辅助说明；`text-faint #69645e` 只用于低优先级标签。以上中性色都带暖调，与画布保持统一。
-- **语义层**：成功 `#3b6d53`、提示 `#356a96`、等待 `#8a5a00`、危险 `#b6463a`；每种颜色都配套浅色背景 token，禁止临时用透明度生成含义不清的状态色。
-- 主按钮使用 `#e97603` 背景和深色文字，避免白色文字在品牌橙上的对比不足。
+- **色域规则**：Display-P3 是唯一权威色彩空间。`src/design-system/tokens.css` 先声明 sRGB 回退，再在 `@supports (color: color(display-p3 1 1 1))` 中以同名语义 token 覆盖为 P3；支持 P3 的 Chrome/Safari 会实际渲染 P3。
+- **数值展示**：设计系统预览中的色块仍使用 P3 token 渲染，但面向设计核对的色值统一显示为六位大写十六进制参考值，例如 `#FF760E`；不直接展示 P3 浮点分量。
+- **品牌层**：`brand / accent` 使用 P3 品牌橙，`brand-hover` 为较深状态色；`color/accent/primary-bg`（代码 token 为 `--color-accent-primary-bg`）是品牌主色 10% 透明度，用于品牌控件悬停背景；`accent-soft` 是独立的浅色选中表面，两者不互为别名。
+- **表面层**：`canvas` 是页面基底；`surface` 是卡片和侧栏；`surface-secondary` 是标签等次级内容区，sRGB 核对值为 `#F6F5F4`；`surface-subtle` 用于控件悬停等弱状态；`surface-muted` 是布局切换控件。
+- **滚动条**：使用独立的 `scrollbar-thumb` 语义色，默认、悬停和拖动状态逐级加深；轨道保持透明。滚动条宽 `12px`，通过 `2px` 透明内边缘形成清晰但不过重的 `8px` 可见滑块。
+- **文字层**：`ink` 用于标题；`text` 用于正文；`text-muted` 用于辅助说明；`text-faint` 用于导航分组、占位文字和时间信息；`copyright` 只用于侧栏版权信息。
+- **语义层**：成功、提示、等待、危险都使用 P3 token，并配套浅色背景 token；危险色使用鲜明的现代红，sRGB 核对值为 `#FF5252`。禁止临时用透明度生成含义不清的状态色。
+- 新增或修改颜色必须先确定 P3 值，再提供 sRGB 兼容回退；组件只引用语义 token，不直接写颜色值或把 P3 重新转换成 sRGB 作为主值。
 
 ## 布局
 
-- 桌面侧栏固定宽度 `220px`，白底，右侧使用 `border-subtle #e9e3dc` 细分隔线。
-- 主内容左右内边距 `24px`；顶部搜索区高 `135px`。
-- 搜索框宽 `560px`、高 `51px`、胶囊圆角，白底；说明文字位于正下方。
-- 工具栏高 `52px`。分段控件和视图切换使用 `surface-muted #ece6de` 底色，当前项为白色。
-- 内容网格使用 `auto-fill` 自动决定列数，理想最小列宽为 `320px`，列宽随后等分剩余空间；不足一列时收缩为容器宽度。水平与垂直卡片间距均为 `12px`。
-- 卡片圆角 `12px`，边框 `0.5px #e4ded7`，内边距为上 `8px`、左右及下 `4px`。
-- 封面比例 `269 / 160`，圆角 `8px`，细边框 `#eee9e3`。
+- 桌面侧栏固定宽度 `220px`，白底，右侧使用 `border-subtle #eee9e3` 细分隔线。
+- 主内容左右内边距 `16px`；顶部导航高 `76px`，筛选栏从 `102px` 开始。
+- 搜索框宽 `560px`、高 `52px`、胶囊圆角，白底，不再显示副标题。
+- 工具栏高 `52px`。分段控件和视图切换使用 `surface-muted #e8e3db` 底色，当前项为白色。
+- 工作台工具栏内的筛选、排序、排列方式以及筛选结果操作按钮在悬停时统一使用轻量 `toolbar-control-hover` 动效：控件位置保持不变，保留细描边并以平滑减速曲线过渡到单层、低透明度、紧凑扩散范围的柔和下投影。该状态只作用于 `.collection-toolbar`，不得复用或覆盖卡片的 `card-lift` 阴影。筛选容器允许换行且保持 `overflow: visible`，禁止裁切控件阴影。
+- 工具栏左侧显示当前范围、结果数和“标签”入口；右侧显示“最新 / 最旧”排序和“卡片 / 列表”排列按钮。标签与排序触发器统一复用 `toolbar-trigger` 的 `36px` 高度、Control 字号、`500` 字重、表面、描边及展开状态；展开只旋转箭头，不改变按钮位置。内容类型、处理状态与星标状态由侧栏范围表达，不在顶部重复设置筛选入口。
+- “标签”入口采用紧凑按钮并显示已选数量；点击后打开可搜索、可多选且带使用数量的浮层，搜索框固定显示“搜索标签”。搜索框与可悬停选项使用一致的 `8px` 内圆角，小于浮层的 `12px` 外圆角，以保持视觉连续。已选项在静止状态下不使用底色，只保留品牌色文字与勾选框；列表项仅在鼠标悬停或键盘可见焦点时使用次级灰色表面，鼠标点击留下的普通焦点不得持续显示底色。有筛选时，入口使用白色表面，已选数量使用品牌主色胶囊 Badge 和白色数字，避免整块按钮被品牌色占满。
+- 标签筛选、排序选择和快捷视图操作菜单统一复用 `popover-surface`：白色表面、`12px` 圆角、`border-subtle` 细边框、`shadow-window` 阴影及相同的进入动效。内部可操作菜单项统一使用 `surface-subtle` 悬停背景；不同浮层只保留由内容结构决定的宽度与布局差异。
+- 已选标签显示在工具栏下一行并保留 `#` 前缀，每个标签都可通过 `X` 单独移除。已选标签使用白色表面、三级文字色和全圆角外形，与暖灰页面形成清楚层次；标签超过当前屏幕可用宽度时只展示部分标签，并提供“+N / 收起”按钮切换完整展示。
+- 标签行右侧只显示“保存为快捷视图”和“清除全部”，不重复展示结果数量；两者与工具栏触发器统一使用 `500` 字重和较轻的次级文字色，前者使用白色次级按钮，后者使用次级灰色表面按钮。无标签筛选时不显示这一行。
+- 切换任一侧栏范围时，临时标签筛选清空，排序恢复为“最新”。打开快捷视图时只恢复其侧栏范围与标签组合，排序仍从“最新”开始；排序方式和排列样式均不写入快捷视图。
+- 排列控件提供“卡片 / 列表”两种可用模式，并复用同一个 `InspirationCard` 的正式 `layout` 变体；切换排列只改变当前浏览状态，不写入快捷视图。
+- 卡片模式遵循 Figma「卡片组件 / 卡片」：网站显示封面、标题、描述与标签；文章不显示封面，正文区域根据实际内容自适应高度；关注源使用 `40px` 头像突出作者。列表模式遵循「卡片组件 / 列表」：网站封面宽度为 `142px`，高度按共享封面比例自动计算；文章使用纯文本结构；关注源使用 `60px` 头像。三种类型都只保留一段描述和一组标签，不设置备注区或第二段说明。窄屏下网站列表继续保留“封面在左、标题与描述在右”的横向结构，封面与右侧文字内容整体沿水平方向的中轴线垂直居中；封面宽度在 `120px` 到 `222px` 之间按容器的 `40%` 自适应，并保持共享封面比例；标题和描述最多各显示两行，标签独立位于底部。
+- 用户填写、网页自带与 AI 生成的描述共用同一视觉位置和排版，不显示来源 Badge。描述优先级只影响内容选择，不增加卡片复杂度。卡片和列表中的标签使用共享 Badge 的 `neutral` variant：默认态为 `surface-secondary` 背景、`text-tertiary` 文字、`border-default` 细描边和全圆角；悬停时切换为 `accent-primary-bg` 背景、`accent-primary` 文字及主色 20% 透明度描边。点击筛选和多标签组合逻辑保持不变。
+- 内容网格使用 `auto-fill` 自动决定列数，理想最小列宽为 `244px`，1280px 画板下显示四列；不足一列时收缩为容器宽度。水平与垂直卡片间距均为 `12px`。
+- 侧栏按“收藏库 / 内容列表 / 快捷视图”分组：收藏库包含“全部 / 未处理 / 星标”；内容列表固定为“网站 / 文章 / 关注源”；快捷视图由内容类型和标签条件组成。侧栏底部只保留“设置”，并复用 `SidebarNavItem` 的文字、间距与 `surface-subtle` 悬停状态，不使用通用 Ghost Button 的 `surface-muted` 状态。
+- 添加入口固定在主内容区底部中央。主按钮为 48px 品牌橙圆形按钮；悬停、键盘聚焦或点击后，向上展开“网站 / 文章 / 关注源”三个操作，并显示文字标签。
+- 卡片圆角 `12px`，边框 `0.5px #e4e4e4`，统一内边距 `8px`，内部区块间距 `8px`。
+- 网站卡片与列表的封面统一使用 `--aspect-cover: 269 / 160`；真实图片和占位封面都必须由容器宽度按此比例计算高度，不得以固定高度拉伸。圆角 `8px`，细边框 `#f1f1f1`。
 
 ## 字体
 
-- 英文和数字统一使用项目内置的 `Geist Mono Variable`；中文字符由 `PingFang SC` 回退承接。
-- 品牌文字使用 Geist Mono 26px/650；中文导航分组 12px，菜单 13px。
+- 界面文字通过 `font-interface` 按 Unicode 范围混排：英文和数字使用项目内置的 `Geist Mono Variable`；中文汉字及中文标点在 macOS 使用 `PingFang SC`，Windows 依次回退至 `Microsoft YaHei UI / Microsoft YaHei`，Linux 依次回退至 `Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC`。
+- 内容卡片与列表中的标题和标签使用 `font-content-title`，沿用界面混排规则；网址等来源元数据使用 `font-metadata`，全部由 `Geist Mono Variable` 呈现。
+- 描述使用 `font-description` 系统无衬线字体栈，包含其中的英文与数字，以提升连续阅读体验；macOS 优先系统 UI 字体，Windows/Linux 使用对应平台系统字体回退。
+- 中文字体范围明确包含汉字、CJK 符号、全角标点，以及 `……`、`——`、中文引号和间隔号等界面常用中文标点；不得只依赖普通缺字回退，否则 Geist 会优先接管省略号等通用标点。
+- `font-heading` 保持 `Songti SC / STSong` 的独立标题角色，不使用混合界面字体覆盖。
+- 品牌文字优先使用 Dinish Condensed 28px/800；英文数字使用 Geist Mono，中文导航分组 12px，菜单 14px。
 - 搜索与界面说明为 14–15px；域名 10px，卡片内容 14px/24px。
 - 字号 token：Caption 11px、Label 12px、Control 13px、Body 14px、Title 16px、Heading 24px。正文默认使用 `text`，只有标题和关键数字使用 `ink`。
 
 ## 图标与图片
 
 - 通用界面图标统一使用 `@remixicon/react`，默认选用 `Line` 版本；选中/收藏状态可使用 `Fill` 版本。
+- 工作台侧栏使用 Figma `V0.1.1` 导出的原始 16px SVG，并通过共享 `SidebarIcon` 蒙版继承当前文字颜色，以保证设计稿轮廓与选中态颜色同时准确。
 - 应用品牌图标使用用户提供的 `public/assets/logo.svg`，不再用图标库近似替代。
 - 不使用 Unicode、emoji 或临时手绘 SVG 代替界面图标。
 - 卡片站点图标与内容封面属于收藏内容，不属于通用图标系统；应使用设计稿导出的实际资源并保存在 `public/assets/`。
@@ -94,7 +162,12 @@ rounded:
 - 可通过 `props`、`variant`、`size`、`className` 扩展时不得复制组件。
 - 新增视觉状态先写入语义 token 或现有组件 variant，再进入页面。
 - 图标按钮必须有可访问名称，卡片支持键盘聚焦和 Enter 打开。
-- 标签固定使用 `#e97603` 常规字重文字与 `#f1ebe5` 背景，并显示 `#` 前缀；侧栏选中态复用同一组配色。
+- 液态形变只用于添加入口，使用 `liquid-gooey` 保持真实 DOM 按钮；三个操作在收起时不得进入 Tab 顺序。键盘可用 Enter/Space 展开、Escape 收起，`prefers-reduced-motion` 下取消弹性位移。
+- 标签统一通过共享 Badge 渲染并显示 `#` 前缀。强调标签使用 `tag-text` 常规字重文字与 `tag-surface` 背景；卡片和列表中的内容标签使用 `neutral` variant。侧栏选中态继续复用强调标签的 P3 配色。
+- 快捷视图只预置不可编辑、不可删除、不可拖动的“稍后阅读”。用户新增的视图只记录侧栏范围与标签组合，不记录排序方式或排列样式；在悬停或键盘聚焦时显示更多按钮。鼠标从条目进入更多按钮时，条目的悬停背景必须持续显示。未选中条目的更多按钮沿用灰色悬停样式；只有当前选中条目的更多按钮使用品牌主色，按钮自身悬停时使用可与选中表面区分的 `color/accent/primary-bg`。快捷视图支持行内改名、二次确认删除和原生拖拽排序，但管理菜单不显示拖拽说明项；系统视图始终位于首位。侧栏选中项的图标、文字与数量统一使用品牌主色。
+- 添加入口展开为宽 `464px`、可随窄屏收缩的半透明毛玻璃菜单，使用 `card-border` 描边并加强背景模糊。菜单标题只显示“选择添加类型”，使用 `color/text/tertiary` 与 Regular 字重；不显示额外副标题。每个操作按钮必须在同一点击区域内同时包含图标、类型名称与简短说明，并使用与侧栏条目一致的 `surface-subtle` 悬停背景，不把文字做成脱离按钮的悬浮标签。
+- 添加表单在链接下提供“描述（可选）”多行输入。辅助文案说明不填写时会自动采用网页描述或 AI 总结，不再出现“备注”字段。
+- 网站卡以封面优先；文章卡以标题和摘要优先、封面次之；关注源卡使用更扁的主页封面并突出头像。未星标卡片的 `bookmark-line` 只在卡片悬停或键盘聚焦时出现在外链按钮旁；点击后切换为常驻的 `bookmark-fill`，再次点击恢复。星标不改变内容类型。
 - 卡片本身不设置最小或最大宽度，由内容网格完整填充。灵感墙采用保持 DOM 顺序的 Grid 瀑布流：根据卡片真实高度计算行跨度，不使用会改变阅读与键盘顺序的 CSS multi-column 或 dense 排列。卡片右上角使用 Remix Icon `arrow-right-up-line` 打开原网页，不在封面悬停时显示收藏或外链按钮。
-- 卡片使用 8px 外边缘留白；标题与描述内容区使用 16px 水平内边距，备注区使用 14px/16px 的紧凑分组留白。标题、描述、备注与标签通过 6px、10px 和 12px 的层级间距区分关系。
+- 卡片使用 8px 内边缘留白；标题与描述内容区使用 4px 内边距，标签紧随描述并保持紧凑留白。网址、封面、信息和标签区块统一使用 8px 间距。
 - 开发环境设计系统页面位于 `dashboard.html#design-system`，必须同步展示颜色、字体、按钮、表单、卡片和布局。

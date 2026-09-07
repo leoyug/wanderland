@@ -1,19 +1,44 @@
-import { RiAddLine, RiArrowLeftLine, RiCheckLine, RiErrorWarningLine, RiSearchLine, RiSettings3Line } from "@remixicon/react";
-import type { ReactNode } from "react";
+import { RiAddLine, RiArrowLeftLine, RiArrowUpDownLine, RiCheckLine, RiErrorWarningLine, RiLayoutGridLine, RiListCheck3, RiPriceTag3Line, RiSearchLine, RiSettings3Line } from "@remixicon/react";
+import { useState, type ReactNode } from "react";
+import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
 import { InspirationCard } from "@/src/components/inspiration/InspirationCard";
+import { SavedViewNavItem } from "@/src/components/layout/SavedViewNavItem";
+import { SidebarIcon } from "@/src/components/layout/SidebarIcon";
+import { SidebarNavItem } from "@/src/components/layout/SidebarNavItem";
 import { Badge } from "@/src/components/ui/Badge";
 import { Button } from "@/src/components/ui/Button";
 import { Card } from "@/src/components/ui/Card";
 import { Field } from "@/src/components/ui/Field";
+import { FacetFilter } from "@/src/components/ui/FacetFilter";
+import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
+import { SelectMenu } from "@/src/components/ui/SelectMenu";
+import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
 import { StatusDot } from "@/src/components/ui/StatusDot";
 import { inspirationItems } from "@/src/data/demo";
+import type { SavedView } from "@/src/domain/inspiration";
 
 const colors = [
-  ["页面背景", "#f4f1ed"], ["内容表面", "#ffffff"], ["次级表面", "#f8f6f3"],
-  ["主文字", "#181512"], ["正文", "#2c2925"], ["次级文字", "#5f5a54"],
-  ["品牌主色", "#e97603"], ["悬停主色", "#d96d00"], ["品牌浅色", "#f1ebe5"],
-  ["成功", "#3b6d53"], ["提示", "#356a96"], ["危险", "#b6463a"],
+  { name: "页面背景", token: "--color-canvas", value: "#F4F1ED" },
+  { name: "内容表面", token: "--color-surface", value: "#FFFFFF" },
+  { name: "次级表面", token: "--color-surface-secondary", value: "#F6F5F4" },
+  { name: "默认描边", token: "--color-border-default", value: "#F2F0ED" },
+  { name: "主文字", token: "--color-ink", value: "#2E2E2E" },
+  { name: "次级文字", token: "--color-text", value: "#525252" },
+  { name: "三级文字", token: "--color-muted", value: "#707070" },
+  { name: "品牌主色", token: "--color-brand", value: "#FF760E" },
+  { name: "悬停主色", token: "--color-brand-hover", value: "#E96A08" },
+  { name: "主色背景 10%", token: "--color-accent-primary-bg", value: "#FF760E · 10%" },
+  { name: "主色描边 20%", token: "--color-accent-primary-border", value: "#FF760E · 20%" },
+  { name: "滚动条", token: "--color-scrollbar-thumb", value: "#B7B0A8" },
+  { name: "成功", token: "--color-success", value: "#3B6D53" },
+  { name: "提示", token: "--color-info", value: "#356A96" },
+  { name: "危险", token: "--color-danger", value: "#FF5252" },
 ];
+
+const layoutOptions = [
+  { value: "grid", label: "网格布局", icon: <RiLayoutGridLine size={15} aria-hidden="true" /> },
+  { value: "compact", label: "紧凑布局", icon: <RiListCheck3 size={15} aria-hidden="true" /> },
+] as const;
 
 function PreviewSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
@@ -25,23 +50,47 @@ function PreviewSection({ title, description, children }: { title: string; descr
 }
 
 export function DesignSystemPage({ onBack }: { onBack: () => void }) {
+  const [previewViews, setPreviewViews] = useState<SavedView[]>([
+    { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article" },
+    { id: "preview-design", name: "设计灵感", scope: "website", tags: ["设计灵感"] },
+    { id: "preview-dev", name: "开发资源", scope: "all", tags: ["组件库"] },
+  ]);
+  const [activePreviewView, setActivePreviewView] = useState("preview-design");
+  const [previewTags, setPreviewTags] = useState<string[]>(["design"]);
+  const [previewSort, setPreviewSort] = useState<"newest" | "oldest">("newest");
+  const movePreviewView = (sourceId: string, targetId: string) => {
+    setPreviewViews((current) => {
+      const system = current.filter((view) => view.isSystem);
+      const custom = current.filter((view) => !view.isSystem);
+      const sourceIndex = custom.findIndex((view) => view.id === sourceId);
+      if (sourceIndex < 0) return current;
+      const [moved] = custom.splice(sourceIndex, 1);
+      if (!moved) return current;
+      const targetIndex = targetId === system[0]?.id ? 0 : custom.findIndex((view) => view.id === targetId);
+      custom.splice(targetIndex < 0 ? custom.length : targetIndex, 0, moved);
+      return [...system, ...custom];
+    });
+  };
+
   return (
     <div className="design-system-page">
       <header className="design-system-header">
-        <Button variant="ghost" onPress={onBack}><RiArrowLeftLine size={17} />返回 Wanderly</Button>
-        <div><span>DEV ONLY</span><h1>个人灵感库 · 设计系统</h1><p>用于验证 token、组件变体与页面组合的一致性。</p></div>
+        <Button variant="ghost" onPress={onBack}><RiArrowLeftLine size={17} />返回 Wanderland</Button>
+        <div><span>DEV ONLY</span><h1>Wanderland · 设计系统</h1><p>用于验证 token、组件变体与页面组合的一致性。</p></div>
       </header>
 
       <div className="design-system-content">
-        <PreviewSection title="颜色" description="以品牌橙和暖灰画布为锚点，深色变体负责可读交互，浅色变体负责选中与提示表面。">
-          <div className="color-grid">{colors.map(([name, value]) => <div className="color-swatch" key={name}><i style={{ background: value }} /><span>{name}</span><code>{value}</code></div>)}</div>
+        <PreviewSection title="颜色" description="色块使用 Display-P3 渲染；数值以便于设计核对的大写十六进制参考值展示。">
+          <div className="color-grid">{colors.map(({ name, token, value }) => <div className="color-swatch" key={name}><i style={{ background: `var(${token})` }} /><span>{name}</span><code>{value}</code></div>)}</div>
         </PreviewSection>
 
-        <PreviewSection title="字体" description="品牌、界面与内容分别使用窄体、系统无衬线与等宽字体，建立清楚的职责层级。">
+        <PreviewSection title="字体" description="界面、标题与标签按字符混排 Geist Mono 和系统中文字体；描述使用系统字体，特殊标题保持宋体角色。">
           <div className="type-specimens">
-            <div><span>Brand / Geist Mono</span><p className="display-type">Wanderly</p></div>
+            <div><span>Brand / Condensed Bold</span><p className="display-type">Wanderland</p></div>
             <div><span>Headline / PingFang SC</span><p className="headline-type">发现看到的美好</p></div>
-            <div><span>Interface / Geist Mono + PingFang SC</span><p>通过名称、描述、封面、频道与标签建立识别线索，在一分钟内找回真正有用的网站。</p></div>
+            <div><span>Interface / Unicode-range CJK + Geist Mono</span><p>搜索设计、创意或关键词……「Wanderland UI」2026，快速找回真正有用的内容。</p></div>
+            <div><span>Content title &amp; tag / Unicode-range CJK + Geist Mono</span><p className="content-title-type">Design Systems 设计系统 · #React组件库</p></div>
+            <div><span>Description / System Sans</span><p className="description-type">A readable description 使用系统字体呈现，适合连续阅读。</p></div>
             <div><span>Metadata / Geist Mono</span><code>collectui.com · Last updated: 3 hours ago</code></div>
           </div>
         </PreviewSection>
@@ -49,38 +98,60 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
         <PreviewSection title="按钮与状态" description="通过既有 variant 扩展语义，而不是创建相似按钮。">
           <div className="component-stack">
             <div className="component-row">
-              <Button variant="primary"><RiAddLine size={16} />收藏链接</Button>
-              <Button variant="secondary"><RiSettings3Line size={16} />管理频道</Button>
+              <Button variant="primary"><RiAddLine size={16} />添加链接</Button>
+              <Button variant="secondary"><RiSettings3Line size={16} />管理标签</Button>
               <Button variant="ghost">取消</Button>
               <Button variant="danger"><RiErrorWarningLine size={16} />删除</Button>
               <Button variant="primary" isDisabled>正在保存</Button>
             </div>
             <div className="component-row">
               <StatusDot status="complete" /><StatusDot status="pending" /><StatusDot status="failed" />
-              <Badge>产品设计</Badge><Badge>React Aria</Badge>
+              <Badge>产品设计</Badge><Badge variant="neutral">React Aria</Badge>
+              <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={[{ id: "design", label: "#设计", count: 15 }, { id: "react", label: "#React", count: 8 }, { id: "motion", label: "#动效", count: 6 }]} selectedValues={previewTags} onChange={setPreviewTags} searchable searchPlaceholder="搜索标签" />
+              <SelectMenu label="排序方式" value={previewSort} options={[{ value: "newest", label: "最新" }, { value: "oldest", label: "最旧" }]} onChange={setPreviewSort} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} />
+              <SegmentedControl label="布局示例" value="grid" options={layoutOptions} onChange={() => undefined} />
+            </div>
+            <SelectedTagBar tags={["设计", "React", "动效", "组件库", "可访问性"]} onRemove={() => undefined} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm">保存为快捷视图</Button><Button variant="ghost" size="sm">清除全部</Button></div>} />
+          </div>
+        </PreviewSection>
+
+        <PreviewSection title="侧栏导航" description="使用设计稿原始图标；系统视图固定，用户视图支持改名、删除和拖动排序。">
+          <div className="sidebar-component-preview">
+            <div className="nav-list">
+              <SidebarNavItem icon={<SidebarIcon src="/assets/sidebar/inbox.svg" />} label="全部" count={22} isActive={!activePreviewView} onPress={() => setActivePreviewView("")} />
+              <SidebarNavItem icon={<SidebarIcon src="/assets/sidebar/article.svg" />} label="文章" count={1} onPress={() => setActivePreviewView("")} />
+            </div>
+            <p className="nav-label">快捷视图</p>
+            <div className="nav-list">
+              {previewViews.map((view) => <SavedViewNavItem key={view.id} view={view} iconSrc={`/assets/sidebar/${view.isSystem ? "timer" : "lightbulb"}.svg`} isActive={activePreviewView === view.id} onPress={() => setActivePreviewView(view.id)} onRename={(name) => setPreviewViews((current) => current.map((item) => item.id === view.id ? { ...item, name } : item))} onDelete={() => setPreviewViews((current) => current.filter((item) => item.id !== view.id || item.isSystem))} onMove={(sourceId) => movePreviewView(sourceId, view.id)} />)}
             </div>
           </div>
         </PreviewSection>
 
-        <PreviewSection title="表单" description="输入、搜索与备注共享焦点、圆角和表面规范。">
+        <PreviewSection title="表单" description="输入、搜索与描述共享焦点、圆角和表面规范。">
           <div className="form-preview">
-            <Field label="灵感名称" defaultValue="Intent UI" />
+            <Field label="名称" defaultValue="Intent UI" />
             <Field label="来源链接" defaultValue="https://intentui.com" />
-            <Field label="备注" placeholder="为什么收藏它？以后准备怎么用？" multiline />
+            <Field label="描述（可选）" placeholder="写下一段便于以后识别的描述" multiline />
             <div className="inline-search"><RiSearchLine size={18} /><input aria-label="搜索示例" placeholder="Search designs, creatives, or keywords..." /><kbd>⌘ K</kbd></div>
           </div>
         </PreviewSection>
 
-        <PreviewSection title="卡片" description="内容卡片组合封面、状态、标签和既有操作组件。">
-          <div className="card-preview-grid">
-            {inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} onOpen={() => undefined} onTagClick={() => undefined} />)}
+        <PreviewSection title="内容卡片" description="同一领域组件覆盖卡片与列表两种排列，并根据网站、文章和关注源调整内容结构。">
+          <div className="card-layout-specimens">
+            <div><span>卡片排列</span><div className="card-preview-grid">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="cards" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
+            <div><span>列表排列</span><div className="list-preview-stack">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="list" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
           </div>
+        </PreviewSection>
+
+        <PreviewSection title="添加入口" description="悬停、聚焦或点击主按钮后，展开带背景模糊的内容类型菜单，文字保持在按钮点击区域内。">
+          <FloatingAddMenu placement="preview" onSelect={() => undefined} />
         </PreviewSection>
 
         <PreviewSection title="布局与反馈" description="面板靠色调和间距分层；关键反馈同时使用图标与文字。">
           <div className="layout-preview">
-            <Card className="layout-nav"><strong>网页</strong><span className="is-selected">全部</span><span>设计</span><span>工具</span></Card>
-            <Card className="layout-main"><div className="feedback success"><RiCheckLine size={16} /><span><strong>收藏成功</strong>网页已保存，正在后台整理。</span></div><div className="skeleton-lines"><i /><i /><i /></div></Card>
+            <Card className="layout-nav"><strong>内容类型</strong><span className="is-selected">网站</span><span>文章</span><span>关注源</span></Card>
+            <Card className="layout-main"><div className="feedback success"><RiCheckLine size={16} /><span><strong>添加成功</strong>链接已保存，正在后台整理。</span></div><div className="skeleton-lines"><i /><i /><i /></div></Card>
           </div>
         </PreviewSection>
       </div>

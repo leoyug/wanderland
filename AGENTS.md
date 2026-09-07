@@ -2,7 +2,7 @@
 
 ## 项目介绍
 
-个人灵感库是一个面向设计与开发工作的 Chrome/Edge 浏览器扩展。用户可以低摩擦收藏当前网页，由系统在后台生成描述、频道与标签，并通过封面优先的工作台快速重新找到内容。
+个人灵感库是一个面向设计与开发工作的 Chrome/Edge 浏览器扩展。用户可以用 URL 低摩擦添加网站、文章或关注源，由系统在后台生成描述与标签，并通过内容类型、星标、快捷视图和封面优先的工作台快速重新找到内容。
 
 V1 坚持本地优先：不要求账户或后端，业务数据保存到 IndexedDB，少量设置保存到 `chrome.storage.local`。AI 是可选助手；AI 不可用时，收藏、浏览、编辑与搜索必须继续工作。
 
@@ -20,7 +20,7 @@ V1 坚持本地优先：不要求账户或后端，业务数据保存到 Indexed
 entrypoints/
 ├── background.ts              # MV3 后台入口与扩展事件协调
 ├── dashboard/                 # 完整灵感库工作台入口
-├── popup/                     # 快速收藏与备注（后续实现）
+├── popup/                     # 快速收藏与可选描述（后续实现）
 └── options/                   # AI 与界面设置（后续实现）
 
 src/
@@ -50,11 +50,15 @@ src/
 
 通用界面图标统一来自 `@remixicon/react`，禁止混用其他图标库；优先使用 `Line` 图标，明确的选中或收藏状态可使用 `Fill` 图标。站点 favicon 与内容封面不属于通用图标，应使用设计稿或收藏数据提供的真实资源，并放入 `public/assets/` 或后续的持久化资源层。
 
-英文与数字统一使用项目内置的 `Geist Mono Variable`；中文由 `PingFang SC` 回退。标签必须通过共享 `Badge` 组件渲染，保留 `#` 前缀，并使用设计系统的 `tag-text` / `tag-surface` token。侧栏选中态复用同一组标签色，禁止页面内自行写近似橙色。
+工作台侧栏是例外：导航图标使用 `public/assets/sidebar/` 中从 Figma `V0.1.1` 导出的原始 SVG，并统一通过 `SidebarIcon` 渲染。不得用相似 Remix 图标替换这些已确认的品牌界面资产。
+
+英文与数字统一使用项目内置的 `Geist Mono Variable`；中文由 `PingFang SC` 回退，品牌字标使用紧缩粗体字体栈。标签必须通过共享 `Badge` 组件渲染，保留 `#` 前缀，并使用设计系统的 `tag-text` / `tag-surface` token。侧栏选中态复用同一组标签色，禁止页面内自行写近似橙色。
 
 页面与 feature 负责数据编排和用户流程，不复制基础控件样式。新增颜色、圆角、阴影或交互状态前，必须先检查 `DESIGN.md` 和现有 token 是否已有对应语义。
 
-开发环境通过 `dashboard.html#design-system` 查看设计系统预览。入口使用 `import.meta.env.DEV` 隔离，生产构建不会渲染预览页面，也不会在侧栏显示入口。预览必须覆盖颜色、字体、按钮、状态、表单、卡片与布局；新增通用组件或 variant 时同步添加代表性示例。
+项目以 Display-P3 为权威色彩空间。新增或修改颜色时，必须在 token 层同时提供 `color(display-p3 ...)` 权威值与 sRGB 十六进制兼容回退；组件只能引用语义 token，不得直接使用 sRGB 色值覆盖 P3 颜色。Figma 导出的 P3 资源必须保留其 `color(display-p3 ...)` 声明。
+
+开发环境通过 `dashboard.html#design-system` 查看设计系统预览。入口使用 `import.meta.env.DEV` 隔离，生产构建不会渲染预览页面，也不会在侧栏显示入口。预览必须覆盖颜色、字体、按钮、状态、表单、卡片与布局；颜色色块使用 P3 token 渲染，显示值统一采用六位大写十六进制参考值。新增通用组件或 variant 时同步添加代表性示例。
 
 ## 组件复用规范
 
@@ -63,6 +67,7 @@ src/
 - 先查找 `src/components/ui/`、`src/components/layout/`、对应领域组件目录和相邻 feature。
 - 如果已有组件可以通过 `props`、`variant`、`size`、`slot` 或 `className` 扩展，应优先扩展现有组件，而不是重新创建相似组件。
 - 页面不得复制按钮、输入框、卡片、标签、状态、Modal 等基础样式。
+- 多选条件筛选统一复用 `src/components/ui/FacetFilter.tsx`；页面只提供选项、数量与筛选状态，不自行复制筛选浮层、搜索框或勾选行样式。
 - 只有现有组件在语义、交互或结构上确实无法满足需求时，才允许新增组件。
 - 新增基础组件必须基于 React Aria 的相应原语或原生语义元素，补齐 hover、focus-visible、disabled、loading、error 与 reduced-motion 状态。
 - 业务组件接收领域对象或明确的业务 props；不要让页面传入大量零散样式参数来拼装同一种组件。
@@ -83,7 +88,7 @@ src/
 - Dexie/IndexedDB 是业务数据唯一来源；MiniSearch 索引必须可从数据库重建。
 - 相同规范化 URL 不得创建重复灵感项；用户手动修改的数据优先于 AI 结果。
 - 快照 HTML 展示前必须通过 DOMPurify 清理；Readability 必须接收克隆后的 Document。
-- 搜索、频道、筛选、当前详情项和滚动位置需要可恢复，避免关闭详情后丢失上下文。
+- 搜索、内容类型、快捷视图、筛选、当前详情项和滚动位置需要可恢复，避免关闭详情后丢失上下文。
 - 灵感墙保持 DOM 阅读顺序，不使用 CSS multi-column 制造视觉顺序与键盘顺序不一致的瀑布流。
 - 详情与图片浏览共享一个受控 Modal 状态机，不创建嵌套焦点陷阱。
 - 所有图标按钮提供可访问名称；常用操作字号不低于 14px，正文原则上不低于 15–16px。

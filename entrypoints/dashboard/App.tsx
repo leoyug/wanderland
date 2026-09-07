@@ -11,12 +11,11 @@ export function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const openDesignSystem = () => { window.location.hash = "design-system"; };
   const openLibrary = () => { window.location.hash = ""; };
 
   if (import.meta.env.DEV && route === "#design-system") {
     return <DesignSystemPage onBack={openLibrary} />;
   }
 
-  return <LibraryPage onOpenDesignSystem={openDesignSystem} />;
+  return <LibraryPage />;
 }
