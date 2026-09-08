@@ -70,7 +70,9 @@ export function LibraryPage() {
   const detailScrollRef = useRef(0);
 
   useEffect(() => {
-    void inspirationRepository.initialize().then(() => seedDevelopmentData(inspirationRepository));
+    // URL 同步 effect 会在挂载后重写地址栏，必须在它之前同步读取 seed 参数
+    const shouldSeed = new URLSearchParams(window.location.search).get("seed") === "demo";
+    void inspirationRepository.initialize().then(() => seedDevelopmentData(inspirationRepository, shouldSeed));
   }, []);
 
   useEffect(() => {

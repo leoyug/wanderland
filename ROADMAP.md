@@ -1,7 +1,7 @@
 # Wanderland 产品开发路线图
 
 > 更新日期：2026-09-09  
-> 当前版本：`v0.5.0`  
+> 当前版本：`v0.5.2`
 > 当前阶段：Organize & Find 完成，进入可选 AI 助手建设
 
 ## 1. 路线图目标
@@ -104,12 +104,12 @@ V1 的目标不是堆积功能，而是打通一个可靠的本地闭环：
 
 主要交付：
 
-- 增加 Popup 当前页添加入口，并复用 Dashboard 的添加用例。
+- 增加按需注入的当前页快速收藏浮层，并复用 Dashboard 的添加用例。
 - Background 负责消息协调和持久化任务推进，不保存关键内存队列。
 - 使用 `activeTab + scripting` 读取当前页的标题、描述、canonical URL、Open Graph、favicon 和已渲染 DOM。
 - 将克隆后的 Document 交给 Readability，并使用 DOMPurify 清理保存的 HTML。
 - 保存正文文本、清理后的 HTML、采集方式、完整性和错误信息。
-- 按 Open Graph 图、可见页截图、站点标识、favicon 的顺序生成封面候选。
+- 仅使用页面提供的 Open Graph 图作为自动封面；缺失时显示占位封面，favicon 只作为站点图标。
 - 手工 URL 与批量导入项立即保存并标记待补全；没有权限时不伪装采集成功。
 - 实现失败任务恢复和人工重试的基础机制。
 

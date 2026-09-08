@@ -6,13 +6,14 @@ type FieldProps = ComponentProps<typeof TextField> & {
   label: string;
   placeholder?: string;
   multiline?: boolean;
+  rows?: number;
 };
 
-export function Field({ label, placeholder, multiline, className, ...props }: FieldProps) {
+export function Field({ label, placeholder, multiline, rows, className, ...props }: FieldProps) {
   return (
     <TextField className={cn("field", className)} {...props}>
       <Label>{label}</Label>
-      {multiline ? <TextArea placeholder={placeholder} /> : <Input placeholder={placeholder} />}
+      {multiline ? <TextArea placeholder={placeholder} rows={rows} /> : <Input placeholder={placeholder} />}
     </TextField>
   );
 }

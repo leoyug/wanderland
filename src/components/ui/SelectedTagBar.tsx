@@ -1,5 +1,6 @@
-import { RiArrowDownSLine, RiCloseLine } from "@remixicon/react";
+import { RiArrowDownSLine } from "@remixicon/react";
 import { useMemo, useState, type ReactNode } from "react";
+import { Badge } from "./Badge";
 
 interface SelectedTagBarProps {
   tags: string[];
@@ -17,9 +18,7 @@ export function SelectedTagBar({ tags, onRemove, actions, visibleLimit = 4 }: Se
     <div className="selected-tag-bar">
       <div className="selected-tag-list" aria-label="已选标签">
         {visibleTags.map((tag) => (
-          <button key={tag} type="button" className="selected-tag" onClick={() => onRemove(tag)} aria-label={`移除标签 ${tag}`}>
-            <span aria-hidden="true">#</span>{tag}<RiCloseLine size={13} aria-hidden="true" />
-          </button>
+          <Badge key={tag} variant="selected" size="sm" removable onPress={() => onRemove(tag)} aria-label={`移除标签 ${tag}`}>{tag}</Badge>
         ))}
         {tags.length > visibleLimit ? (
           <button type="button" className="selected-tag-toggle" onClick={() => setIsExpanded((current) => !current)} aria-expanded={isExpanded}>

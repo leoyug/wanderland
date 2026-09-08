@@ -12,12 +12,12 @@ export interface PageCapture {
   cleanHtml: string;
   completeness: SnapshotCompleteness;
   ogImage?: string;
-  siteLogo?: string;
   favicon?: string;
 }
 
 export type ExtensionRequest =
-  | { type: "dashboard:open" }
+  | { type: "dashboard:open"; itemId?: string }
+  | { type: "tags:list" }
   | { type: "capture:current"; kind: SavedItemKind; description: string; tags: string[] }
   | { type: "capture:retry"; itemId: string };
 

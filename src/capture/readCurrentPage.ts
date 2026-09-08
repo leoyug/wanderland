@@ -50,8 +50,6 @@ export function readCurrentPage(): PageCapture {
 
   const canonicalUrl = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href);
   const favicon = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel~="icon"]')?.href);
-  const siteLogo = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')?.href)
-    ?? absoluteUrl(document.querySelector<HTMLMetaElement>('meta[itemprop="logo"]')?.content);
 
   return {
     title: metaContent('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title.trim(),
@@ -65,7 +63,6 @@ export function readCurrentPage(): PageCapture {
     cleanHtml: cleanHtmlResult.value,
     completeness,
     ogImage: absoluteUrl(metaContent('meta[property="og:image"]', 'meta[name="twitter:image"]')),
-    siteLogo,
     favicon,
   };
 }

@@ -21,7 +21,8 @@ V1 坚持本地优先：不要求账户或后端，业务数据保存到 Indexed
 entrypoints/
 ├── background.ts              # MV3 后台入口与扩展事件协调
 ├── dashboard/                 # 完整灵感库工作台入口
-├── popup/                     # 快速收藏与可选描述（后续实现）
+├── capture-overlay.tsx        # 用户点击工具栏后按需注入的快速收藏浮层
+├── capture-page.ts            # 当前页面内容采集脚本
 └── options/                   # AI 与界面设置（后续实现）
 
 src/

@@ -147,6 +147,23 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("uses only an Open Graph image as an automatic cover", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "website", url: "https://example.com/work" });
+
+    await repository.completeCapture(created.item.id, createCapture({
+      ogImage: undefined,
+      favicon: "https://example.com/favicon.ico",
+    }));
+
+    const item = await database.savedItems.get(created.item.id);
+    expect(item?.cover.image).toBeUndefined();
+    expect(item?.cover.blob).toBeUndefined();
+    expect(item?.siteIcon).toBe("https://example.com/favicon.ico");
+    database.close();
+  });
+
   it("merges a captured canonical duplicate instead of creating two items", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);

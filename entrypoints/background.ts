@@ -6,8 +6,8 @@ function readableError(error: unknown) {
   return error instanceof Error ? error.message : "未知采集错误";
 }
 
-async function getActiveWebTab() {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+async function getActiveWebTab(candidate?: Browser.tabs.Tab) {
+  const tab = candidate ?? (await browser.tabs.query({ active: true, currentWindow: true }))[0];
   if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) {
     throw new Error("当前页面不支持采集，请打开一个 http:// 或 https:// 网页。");
   }
@@ -24,32 +24,21 @@ async function readTab(tabId: number) {
   return capture;
 }
 
-async function captureScreenshot(windowId?: number) {
-  if (windowId === undefined) return undefined;
-  try {
-    const dataUrl = await browser.tabs.captureVisibleTab(windowId, { format: "jpeg", quality: 82 });
-    return await (await fetch(dataUrl)).blob();
-  } catch {
-    return undefined;
-  }
-}
-
 async function captureIntoItem(itemId: string, tab: Awaited<ReturnType<typeof getActiveWebTab>>) {
   await inspirationRepository.markCaptureStarted(itemId);
   try {
     const capture = await readTab(tab.id!);
-    const screenshot = capture.ogImage ? undefined : await captureScreenshot(tab.windowId);
-    return { capture, ...(await inspirationRepository.completeCapture(itemId, capture, screenshot)) };
+    return { capture, ...(await inspirationRepository.completeCapture(itemId, capture)) };
   } catch (error) {
     await inspirationRepository.failCapture(itemId, readableError(error));
     throw error;
   }
 }
 
-async function addCurrentPage(request: Extract<ExtensionRequest, { type: "capture:current" }>): Promise<CaptureResponse> {
+async function addCurrentPage(request: Extract<ExtensionRequest, { type: "capture:current" }>, senderTab?: Browser.tabs.Tab): Promise<CaptureResponse> {
   let itemId: string | undefined;
   try {
-    const tab = await getActiveWebTab();
+    const tab = await getActiveWebTab(senderTab);
     const created = await inspirationRepository.createSavedItem({
       kind: request.kind,
       url: tab.url!,
@@ -72,10 +61,10 @@ async function addCurrentPage(request: Extract<ExtensionRequest, { type: "captur
   }
 }
 
-async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capture:retry" }>): Promise<CaptureResponse> {
+async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capture:retry" }>, senderTab?: Browser.tabs.Tab): Promise<CaptureResponse> {
   let started = false;
   try {
-    const [item, tab] = await Promise.all([inspirationRepository.getSavedItem(request.itemId), getActiveWebTab()]);
+    const [item, tab] = await Promise.all([inspirationRepository.getSavedItem(request.itemId), getActiveWebTab(senderTab)]);
     if (!item) throw new Error("收藏项不存在。");
     const capture = await readTab(tab.id!);
     const currentCandidates = [tab.url!, capture.url, capture.canonicalUrl].filter(Boolean).map((url) => normalizeUrl(url!));
@@ -84,8 +73,7 @@ async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capt
     }
     await inspirationRepository.markCaptureStarted(item.id);
     started = true;
-    const screenshot = capture.ogImage ? undefined : await captureScreenshot(tab.windowId);
-    const completed = await inspirationRepository.completeCapture(item.id, capture, screenshot);
+    const completed = await inspirationRepository.completeCapture(item.id, capture);
     return { ok: true, created: false, itemId: completed.itemId, title: capture.title || item.title, completeness: capture.completeness };
   } catch (error) {
     if (started) await inspirationRepository.failCapture(request.itemId, readableError(error));
@@ -99,11 +87,27 @@ export default defineBackground(() => {
     inspirationRepository.recoverInterruptedCaptureTasks(),
   ]).catch((error) => console.error("Wanderland 初始化失败", error));
 
-  browser.runtime.onMessage.addListener((request: ExtensionRequest) => {
+  browser.runtime.onMessage.addListener((request: ExtensionRequest, sender) => {
     if (request.type === "dashboard:open") {
-      return browser.tabs.create({ url: browser.runtime.getURL("/dashboard.html") });
+      const url = new URL(browser.runtime.getURL("/dashboard.html"));
+      if (request.itemId) url.searchParams.set("item", request.itemId);
+      return browser.tabs.create({ url: url.href });
     }
-    if (request.type === "capture:current") return addCurrentPage(request);
-    if (request.type === "capture:retry") return retryCurrentPage(request);
+    if (request.type === "tags:list") return inspirationRepository.listTags();
+    if (request.type === "capture:current") return addCurrentPage(request, sender.tab);
+    if (request.type === "capture:retry") return retryCurrentPage(request, sender.tab);
+  });
+
+  browser.action.onClicked.addListener(async (tab) => {
+    if (!tab.id) {
+      await browser.tabs.create({ url: browser.runtime.getURL("/dashboard.html") });
+      return;
+    }
+    try {
+      await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ["/capture-overlay.js"] });
+    } catch (error) {
+      console.warn("Wanderland 收藏浮层无法在当前页面打开", error);
+      await browser.tabs.create({ url: browser.runtime.getURL("/dashboard.html") });
+    }
   });
 });

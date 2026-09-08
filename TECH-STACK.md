@@ -54,8 +54,8 @@ WXT 官方支持 React、Vue、Svelte 和 Solid，能为不同浏览器生成扩
 ```text
 entrypoints/
 ├── background.ts          # 事件协调、持久化任务、AI 请求
-├── content.ts             # 读取当前页面 DOM 和元数据
-├── popup/                 # 收藏状态和可选描述
+├── capture-page.ts        # 按需读取当前页面 DOM 和元数据
+├── capture-overlay.tsx    # 按需注入的 Shadow DOM 快速收藏浮层
 ├── dashboard/             # 完整卡片管理页
 └── options/               # AI Key、模型和界面设置
 
@@ -73,7 +73,7 @@ src/
 ### 扩展页面的职责
 
 - **Dashboard**：通过底部悬浮入口添加网站、文章或关注源；左侧切换内容类型、星标与快捷视图；顶部搜索、多标签筛选和排序；主体呈现卡片墙、详情灯箱和图片浏览。
-- **Popup**：后续可复用 Dashboard 的添加流程，为浏览器工具栏提供当前页快捷添加；不作为 V1 首要入口。
+- **Capture Overlay**：用户点击浏览器工具栏图标后，由 Service Worker 使用 `activeTab + scripting` 按需注入；React 表单挂载在 Shadow DOM 中，标签下拉层可越过面板边界但不能越过网页视口。
 - **Options**：配置 AI Provider、Endpoint、Model 和 API Key。
 - **Content Script**：只在用户明确收藏时读取当前页面。
 - **Service Worker**：协调消息、任务状态和失败重试，不保存只存在于内存的重要状态。
@@ -125,7 +125,7 @@ MiniSearch 索引可以从 Dexie 重建，不是业务数据源。建议权重�
 
 ### 5.1 推荐流程
 
-1. 用户在悬浮入口选择网站、文章或关注源，提交 URL，并可选填写描述；未来插件按钮可直接带入当前页 URL。
+1. 用户可在 Dashboard 悬浮入口提交 URL，或点击插件按钮在当前网页打开收藏浮层；当前页浮层可选择内容类型并填写可选描述与标签。
 2. 立即写入内容类型、URL、标题、域名、添加时间，以及存在时的用户描述。
 3. 内容脚本读取当前页面已渲染的 DOM。
 4. 提取 Open Graph、JSON-LD、favicon 和其他元数据。
@@ -173,11 +173,9 @@ V1 不为了自动补全而要求读取所有网站。
 封面按以下顺序选择：
 
 1. 尺寸和比例合适的 Open Graph 图。
-2. 当前可见区域截图。
-3. 站点 Logo。
-4. favicon 或默认占位图。
+2. 默认占位封面。
 
-封面保存为 Blob，卡片展示时创建 Object URL。用户手动选择封面后，后续自动处理不得覆盖。
+站点 Logo 与 favicon 不进入封面候选，favicon 只作为站点图标。自动封面保存为远程图片 URL，卡片展示时直接加载；用户手动选择的封面保存为 Blob，展示时创建 Object URL。用户手动选择封面后，后续自动处理不得覆盖。
 
 ### 6.1 卡片墙布局
 

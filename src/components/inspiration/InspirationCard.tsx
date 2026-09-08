@@ -31,7 +31,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, la
 
   const body = <div className="card-body"><h2>{item.title}</h2>{item.description ? <p>{item.description}</p> : null}</div>;
   const cover = <div className="card-cover-wrap"><CoverArt item={item} /></div>;
-  const tags = item.tags.length > 0 ? <footer className="card-tags">{item.tags.map((tag) => <Badge key={tag} variant="neutral" onClick={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}</footer> : null;
+  const tags = item.tags.length > 0 ? <footer className="card-tags">{item.tags.map((tag) => <Badge key={tag} variant="neutral" size="sm" onPress={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}</footer> : null;
   const followContent = <div className="follow-profile">{item.siteIcon ? <img className="follow-avatar" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}{body}</div>;
 
   return (

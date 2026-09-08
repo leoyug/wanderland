@@ -10,11 +10,14 @@ interface TagInputProps {
   options: Tag[];
   onChange: (tags: string[]) => void;
   placement?: "auto" | "bottom";
+  revealBelowOnOpen?: boolean;
 }
 
 const normalize = (value: string) => value.trim().replace(/^#/, "").normalize("NFKC");
+const revealSpaceProperty = "--tag-input-reveal-space";
+const detailRevealRoom = 200;
 
-export function TagInput({ label, tags, options, onChange, placement = "auto" }: TagInputProps) {
+export function TagInput({ label, tags, options, onChange, placement = "auto", revealBelowOnOpen = false }: TagInputProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -31,7 +34,9 @@ export function TagInput({ label, tags, options, onChange, placement = "auto" }:
   }, [available, query]);
   const canCreate = Boolean(normalize(query)) && !options.some((option) => option.name.toLocaleLowerCase("zh-CN") === normalize(query).toLocaleLowerCase("zh-CN"));
   const actionable = query.trim() ? [...matches.map((tag) => tag.name), ...(canCreate ? [normalize(query)] : [])] : [...recent.map((tag) => tag.name), ...available.map((tag) => tag.name)];
-  const portalHost = rootRef.current?.closest(".detail-modal") ?? document.body;
+  const portalHost = rootRef.current?.closest(".detail-modal")
+    ?? rootRef.current?.closest(".capture-overlay-root")
+    ?? document.body;
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +75,15 @@ export function TagInput({ label, tags, options, onChange, placement = "auto" }:
     return () => popover.removeEventListener("wheel", containWheel, { capture: true });
   }, [open, popoverStyle]);
 
+  useEffect(() => () => {
+    if (revealBelowOnOpen) rootRef.current?.closest<HTMLElement>(".detail-scroll")?.style.removeProperty(revealSpaceProperty);
+  }, [revealBelowOnOpen]);
+
+  const closeMenu = () => {
+    if (revealBelowOnOpen) rootRef.current?.closest<HTMLElement>(".detail-scroll")?.style.removeProperty(revealSpaceProperty);
+    setOpen(false);
+  };
+
   const add = (name: string) => {
     const next = normalize(name);
     if (!next) return;
@@ -79,6 +93,26 @@ export function TagInput({ label, tags, options, onChange, placement = "auto" }:
     setHoveredIndex(-1);
     setOpen(true);
     requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const openMenu = () => {
+    if (revealBelowOnOpen) {
+      const scroller = rootRef.current?.closest<HTMLElement>(".detail-scroll");
+      const root = rootRef.current;
+      if (scroller && root) {
+        scroller.style.removeProperty(revealSpaceProperty);
+        const scrollerRect = scroller.getBoundingClientRect();
+        const rootRect = root.getBoundingClientRect();
+        const roomBelow = scrollerRect.bottom - rootRect.bottom - 6;
+        const requiredShift = Math.max(0, detailRevealRoom - roomBelow);
+        const targetScrollTop = scroller.scrollTop + requiredShift;
+        const availableScrollTop = scroller.scrollHeight - scroller.clientHeight;
+        const requiredSpace = Math.max(0, Math.ceil(targetScrollTop - availableScrollTop));
+        if (requiredSpace > 0) scroller.style.setProperty(revealSpaceProperty, `${requiredSpace}px`);
+        if (requiredShift > 0) requestAnimationFrame(() => { scroller.scrollTop = targetScrollTop; });
+      }
+    }
+    setActiveIndex(-1);
+    setOpen(true);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -95,20 +129,21 @@ export function TagInput({ label, tags, options, onChange, placement = "auto" }:
     } else if (event.key === "Backspace" && !query && tags.length) {
       onChange(tags.slice(0, -1));
     } else if (event.key === "Escape") {
-      setOpen(false);
+      event.stopPropagation();
+      closeMenu();
     }
   };
 
-  return <div className="tag-input" ref={rootRef} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node)) setOpen(false); }}>
+  return <div className="tag-input" ref={rootRef} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node)) closeMenu(); }}>
     <span className="tag-input-label">{label}</span>
     <div className="tag-input-control" onClick={() => inputRef.current?.focus()}>
       {tags.map((tag) => <button key={tag} type="button" className="tag-input-chip" onClick={(event) => { event.stopPropagation(); onChange(tags.filter((item) => item !== tag)); }}>#{tag}<RiCloseLine size={13} /></button>)}
-      <input ref={inputRef} value={query} onFocus={() => { setActiveIndex(-1); setOpen(true); }} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
+      <input ref={inputRef} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
     </div>
     {open && popoverStyle ? createPortal(<div ref={popoverRef} className="tag-input-popover" id="tag-input-listbox" role="listbox" style={popoverStyle} onMouseLeave={() => setHoveredIndex(-1)}>
       {query.trim() ? <>
         {matches.map((tag, index) => <button key={tag.id} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>#{tag.name}</button>)}
-        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === matches.length} className={`${activeIndex === matches.length ? "is-active " : hoveredIndex === matches.length ? "is-hovered " : ""}tag-create-option`} onMouseEnter={() => setHoveredIndex(matches.length)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>创建“{normalize(query)}”</button> : null}
+        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === matches.length} className={activeIndex === matches.length ? "is-active" : hoveredIndex === matches.length ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(matches.length)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>创建“{normalize(query)}”</button> : null}
         {!matches.length && !canCreate ? <p>没有可添加的标签</p> : null}
       </> : <>
         {recent.length ? <><span>最近使用</span>{recent.map((tag, index) => <button key={`recent-${tag.id}`} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>#{tag.name}</button>)}</> : null}

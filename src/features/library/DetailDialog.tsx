@@ -9,6 +9,7 @@ import { Field } from "@/src/components/ui/Field";
 import { TagInput } from "@/src/components/ui/TagInput";
 import { inspirationRepository } from "@/src/db/repository";
 import type { LibraryItem, UpdateSavedItemInput } from "@/src/domain/inspiration";
+import { cn } from "@/src/lib/cn";
 
 interface DetailDialogProps {
   item: LibraryItem | null;
@@ -73,7 +74,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   return (
     <ModalOverlay className="detail-overlay" isOpen onOpenChange={(open) => !open && onClose()} isDismissable>
       <Modal className="detail-modal">
-        <Dialog className="detail-dialog" aria-label={mode === "snapshot" ? "正文快照" : "收藏项详情"}>
+        <Dialog className={cn("detail-dialog", `kind-${item.kind}`, isEditing && "is-editing")} aria-label={mode === "snapshot" ? "正文快照" : "收藏项详情"}>
           <header className="detail-header">
             <Button size="icon" variant="ghost" aria-label={mode === "details" ? "关闭详情" : "返回详情"} onPress={() => mode === "details" ? onClose() : setMode("details")}><RiCloseLine size={19} /></Button>
             <span className="detail-host" title={item.sourceLabel}>{mode === "snapshot" ? "本地正文快照" : item.sourceLabel}</span>
@@ -86,12 +87,12 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
               <div className="image-viewer"><CoverArt item={item} large fit="contain" /><p>{item.title}</p></div>
             ) : (
               <>
-                <div className="detail-cover-wrap"><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />查看封面</Button> : null}</div>
+                {item.kind !== "article" || item.cover.image || item.cover.blob ? <div className="detail-cover-wrap"><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />查看封面</Button> : null}</div> : null}
                 <div className="detail-copy">
                   {isEditing ? <form className="detail-inline-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
                     <Field label="标题" value={title} onChange={setTitle} />
                     <Field label="描述" value={description} onChange={setDescription} multiline />
-                    <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} />
+                    <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen />
                     <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "选择后将锁定封面，不再被自动采集覆盖。"}</small></div><input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => setCoverBlob(event.target.files?.[0])} /></div>
                   </form> : <>
                     <div className="detail-title-row"><div><Heading slot="title">{item.title}</Heading><p>{item.description || "暂无描述"}</p></div></div>

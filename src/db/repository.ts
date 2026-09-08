@@ -293,7 +293,7 @@ export class InspirationRepository {
     });
   }
 
-  async completeCapture(itemId: string, capture: PageCapture, screenshot?: Blob) {
+  async completeCapture(itemId: string, capture: PageCapture) {
     return this.database.transaction(
       "rw",
       this.database.savedItems,
@@ -325,13 +325,16 @@ export class InspirationRepository {
           error: capture.completeness === "failed" ? "页面中没有可保存的正文内容" : undefined,
         };
         const nextDescription = resolveDescription(targetItem, { description: capture.description, source: "page" });
-        const automaticImage = capture.ogImage ?? (screenshot ? undefined : capture.siteLogo ?? capture.favicon);
+        // Only a page-authored social preview is suitable for a full-width cover.
+        // Site logos and favicons remain identity metadata; stretching either into
+        // the cover frame produces a misleading, low-quality result.
+        const automaticImage = capture.ogImage;
         const nextCover = targetItem.cover.isUserSelected
           ? targetItem.cover
           : {
               ...targetItem.cover,
               image: automaticImage,
-              blob: capture.ogImage ? undefined : screenshot,
+              blob: undefined,
               label: capture.title || targetItem.cover.label,
             };
         await this.database.snapshots.put(snapshot);
