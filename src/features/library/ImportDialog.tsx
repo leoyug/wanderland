@@ -14,7 +14,7 @@ const kindMeta = {
 interface ImportDialogProps {
   kind: SavedItemKind | null;
   onClose: () => void;
-  onAdd: (input: { kind: SavedItemKind; url: string; description: string }) => boolean;
+  onAdd: (input: { kind: SavedItemKind; url: string; description: string }) => Promise<boolean>;
 }
 
 export function ImportDialog({ kind, onClose, onAdd }: ImportDialogProps) {
@@ -27,17 +27,24 @@ export function ImportDialog({ kind, onClose, onAdd }: ImportDialogProps) {
   const meta = kindMeta[kind];
   const Icon = meta.icon;
 
-  const submit = () => {
+  const submit = async () => {
+    let parsed: URL;
     try {
-      const parsed = new URL(url.trim());
+      parsed = new URL(url.trim());
       if (!/^https?:$/.test(parsed.protocol)) throw new Error();
-      if (!onAdd({ kind, url: parsed.href, description: description.trim() })) {
+    } catch {
+      setError("请输入完整的 http:// 或 https:// 链接");
+      return;
+    }
+
+    try {
+      if (!await onAdd({ kind, url: parsed.href, description: description.trim() })) {
         setError("这个链接已存在于当前内容类型中");
         return;
       }
       onClose();
     } catch {
-      setError("请输入完整的 http:// 或 https:// 链接");
+      setError("未能写入本地收藏库，请重试。");
     }
   };
 
@@ -45,7 +52,7 @@ export function ImportDialog({ kind, onClose, onAdd }: ImportDialogProps) {
     <ModalOverlay className="detail-overlay" isOpen isDismissable onOpenChange={(open) => !open && onClose()}>
       <Modal className="form-modal">
         <Dialog className="form-dialog">
-          {({ close }) => <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
+          {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <header className="form-dialog-header"><div className="form-dialog-icon"><Icon size={20} /></div><div><Heading slot="title">添加{meta.label}</Heading><p>{meta.help}</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
               <Field label="链接" placeholder="https://example.com" value={url} onChange={setUrl} autoFocus />

@@ -1,4 +1,5 @@
 import { RiArrowUpDownLine, RiCloseLine, RiCommandLine, RiLayoutGridLine, RiListCheck3, RiPriceTag3Line, RiSearchLine } from "@remixicon/react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input, SearchField } from "react-aria-components";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
@@ -9,13 +10,15 @@ import { FacetFilter } from "@/src/components/ui/FacetFilter";
 import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
-import { inspirationItems, savedViews } from "@/src/data/demo";
-import type { LibraryScope, SavedItem, SavedItemKind, SavedView } from "@/src/domain/inspiration";
-import { normalizeUrl } from "@/src/capture/normalizeUrl";
+import { seedDevelopmentData } from "@/src/db/developmentSeed";
+import { inspirationRepository } from "@/src/db/repository";
+import { isSavedItemProcessed, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
+import { createLibrarySearchIndex } from "@/src/search/librarySearch";
 import { DataImportDialog } from "./DataImportDialog";
 import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
 import { SettingsDialog } from "./SettingsDialog";
+import { TagManagerDialog } from "./TagManagerDialog";
 
 type LayoutMode = InspirationLayout;
 type SortOrder = "newest" | "oldest";
@@ -29,20 +32,59 @@ const sortOptions = [
   { value: "oldest", label: "最旧" },
 ] as const;
 
+const validScopes = new Set<LibraryScope>(["all", "unprocessed", "favorites", "website", "article", "follow"]);
+
+function readInitialState() {
+  const params = new URLSearchParams(location.search);
+  const scope = params.get("scope") as LibraryScope | null;
+  return {
+    scope: scope && validScopes.has(scope) ? scope : "all" as LibraryScope,
+    query: params.get("q") ?? "",
+    tags: params.getAll("tag"),
+    sort: params.get("sort") === "oldest" ? "oldest" as const : "newest" as const,
+    layout: params.get("layout") === "list" ? "list" as const : "cards" as const,
+    item: params.get("item"),
+    view: params.get("view"),
+  };
+}
+
 export function LibraryPage() {
-  const [items, setItems] = useState<SavedItem[]>(inspirationItems);
-  const [views, setViews] = useState<SavedView[]>(savedViews);
-  const [activeScope, setActiveScope] = useState<LibraryScope>("all");
-  const [activeSavedView, setActiveSavedView] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("cards");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const initialState = useMemo(readInitialState, []);
+  const liveItems = useLiveQuery(() => inspirationRepository.listLibraryItems(), []);
+  const liveViews = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []);
+  const items = liveItems ?? [];
+  const views = liveViews ?? [];
+  const [activeScope, setActiveScope] = useState<LibraryScope>(initialState.scope);
+  const [activeSavedView, setActiveSavedView] = useState<string | null>(initialState.view);
+  const [query, setQuery] = useState(initialState.query);
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialState.tags);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(initialState.sort);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(initialState.layout);
+  const [selectedId, setSelectedId] = useState<string | null>(initialState.item);
   const [importKind, setImportKind] = useState<SavedItemKind | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dataImportOpen, setDataImportOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const detailTriggerRef = useRef<HTMLElement | null>(null);
+  const detailScrollRef = useRef(0);
+
+  useEffect(() => {
+    void inspirationRepository.initialize().then(() => seedDevelopmentData(inspirationRepository));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (activeScope !== "all") params.set("scope", activeScope);
+    selectedTags.forEach((tag) => params.append("tag", tag));
+    if (sortOrder !== "newest") params.set("sort", sortOrder);
+    if (layoutMode !== "cards") params.set("layout", layoutMode);
+    if (selectedId) params.set("item", selectedId);
+    if (activeSavedView) params.set("view", activeSavedView);
+    const next = params.size ? `?${params}` : location.pathname;
+    history.replaceState(null, "", next);
+  }, [activeSavedView, activeScope, layoutMode, query, selectedId, selectedTags, sortOrder]);
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -59,23 +101,24 @@ export function LibraryPage() {
   }, [items]);
 
   const currentView = views.find((view) => view.id === activeSavedView) ?? null;
+  const searchIndex = useMemo(() => createLibrarySearchIndex(items), [items]);
+  const searchMatches = useMemo(() => searchIndex.search(query), [query, searchIndex]);
   const visibleItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
     const filtered = items.filter((item) => {
       const scopeMatch = activeScope === "all" || activeScope === "favorites" || activeScope === "unprocessed"
-        ? activeScope === "all" || (activeScope === "favorites" ? item.isFavorite : item.aiStatus !== "complete")
+        ? activeScope === "all" || (activeScope === "favorites" ? item.isFavorite : !isSavedItemProcessed(item))
         : item.kind === activeScope;
       const viewMatch = !currentView || !currentView.tags || currentView.tags.every((tag) => item.tags.includes(tag));
-      const text = [item.title, item.description, item.siteHost, ...item.tags].join(" ").toLowerCase();
-      const queryMatch = !normalized || text.includes(normalized);
+      const queryMatch = searchMatches.has(item.id);
       const tagMatch = selectedTags.every((tag) => item.tags.includes(tag));
       return scopeMatch && viewMatch && queryMatch && tagMatch;
     });
-    return sortOrder === "newest" ? filtered : [...filtered].reverse();
-  }, [activeScope, currentView, items, query, selectedTags, sortOrder]);
+    return [...filtered].sort((a, b) => sortOrder === "newest" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt);
+  }, [activeScope, currentView, items, searchMatches, selectedTags, sortOrder]);
 
   const viewTitle = currentView?.name ?? (activeScope === "all" ? "全部内容" : activeScope === "favorites" ? "星标" : activeScope === "unprocessed" ? "未处理" : kindLabels[activeScope]);
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const selectedSiteItemCount = selectedItem ? items.filter((item) => item.siteHost === selectedItem.siteHost).length : 0;
   const resetBrowseControls = () => { setSelectedTags([]); setSortOrder("newest"); };
   const changeScope = (scope: LibraryScope) => { setActiveScope(scope); setActiveSavedView(null); resetBrowseControls(); };
   const changeSavedView = (id: string) => {
@@ -85,31 +128,19 @@ export function LibraryPage() {
     setSelectedTags(view?.tags ?? []);
     setSortOrder("newest");
   };
-  const renameSavedView = (id: string, name: string) => setViews((current) => current.map((view) => view.id === id && !view.isSystem ? { ...view, name } : view));
+  const renameSavedView = (id: string, name: string) => { void inspirationRepository.renameSavedView(id, name); };
   const deleteSavedView = (id: string) => {
-    setViews((current) => current.filter((view) => view.id !== id || view.isSystem));
+    void inspirationRepository.deleteSavedView(id);
     setActiveSavedView((current) => current === id ? null : current);
   };
   const moveSavedView = (sourceId: string, targetId: string) => {
-    setViews((current) => {
-      const systemViews = current.filter((view) => view.isSystem);
-      const customViews = current.filter((view) => !view.isSystem);
-      const sourceIndex = customViews.findIndex((view) => view.id === sourceId);
-      if (sourceIndex < 0) return current;
-      const [moved] = customViews.splice(sourceIndex, 1);
-      if (!moved) return current;
-      const targetIndex = targetId === systemViews[0]?.id ? 0 : customViews.findIndex((view) => view.id === targetId);
-      customViews.splice(targetIndex < 0 ? customViews.length : targetIndex, 0, moved);
-      return [...systemViews, ...customViews];
-    });
+    void inspirationRepository.moveSavedView(sourceId, targetId);
   };
-  const createSavedView = () => {
-    const id = `saved-view-${Date.now()}`;
-    const view: SavedView = { id, name: "新快捷视图", scope: activeScope, tags: selectedTags.length ? selectedTags : undefined };
-    setViews((current) => [...current, view]);
-    setActiveSavedView(id);
+  const createSavedView = async () => {
+    const view = await inspirationRepository.createSavedView({ name: "新快捷视图", scope: activeScope, tags: selectedTags });
+    setActiveSavedView(view.id);
   };
-  const toggleFavorite = (id: string) => setItems((current) => current.map((item) => item.id === id ? { ...item, isFavorite: !item.isFavorite } : item));
+  const toggleFavorite = (id: string) => { void inspirationRepository.toggleFavorite(id); };
 
   function navigateDetail(direction: -1 | 1) {
     if (!selectedId || visibleItems.length === 0) return;
@@ -118,48 +149,33 @@ export function LibraryPage() {
     if (next) setSelectedId(next.id);
   }
 
-  function createPendingItem(kind: SavedItemKind, url: string, description = ""): SavedItem {
-    const parsed = new URL(url);
-    const userDescription = description.trim();
-    return {
-      id: `${kind}-${Date.now()}`,
-      kind,
-      title: parsed.hostname.replace(/^www\./, ""),
-      siteHost: parsed.hostname.replace(/^www\./, ""),
-      description: userDescription,
-      descriptionSource: userDescription ? "user" : undefined,
-      url,
-      tags: [],
-      savedAt: "刚刚",
-      aiStatus: "pending",
-      isFavorite: false,
-      cover: { background: "var(--color-tag-surface)", foreground: "var(--color-brand)", label: kindLabels[kind], motif: kind === "follow" ? "orb" : "type" },
-    };
+  function openDetail(id: string) {
+    detailTriggerRef.current = document.activeElement as HTMLElement | null;
+    detailScrollRef.current = window.scrollY;
+    setSelectedId(id);
   }
 
-  function addItem({ kind, url, description }: { kind: SavedItemKind; url: string; description: string }) {
-    const canonicalUrl = normalizeUrl(url);
-    if (items.some((item) => item.kind === kind && normalizeUrl(item.url) === canonicalUrl)) return false;
-    setItems((current) => [createPendingItem(kind, canonicalUrl, description), ...current]);
+  function closeDetail() {
+    setSelectedId(null);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: detailScrollRef.current });
+      detailTriggerRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  async function addItem({ kind, url, description }: { kind: SavedItemKind; url: string; description: string }) {
+    const result = await inspirationRepository.createSavedItem({ kind, url, description, captureMethod: "manual-url" });
+    if (!result.created) return false;
     changeScope(kind);
     return true;
   }
 
-  function importItems(urls: string[]) {
-    const existing = new Set(items.filter((item) => item.kind === "website").map((item) => normalizeUrl(item.url)));
-    const additions: SavedItem[] = [];
-    let skipped = 0;
-    urls.forEach((url, index) => {
-      const canonicalUrl = normalizeUrl(url);
-      if (existing.has(canonicalUrl)) { skipped += 1; return; }
-      existing.add(canonicalUrl);
-      additions.push({ ...createPendingItem("website", canonicalUrl), id: `website-${Date.now()}-${index}` });
-    });
-    if (additions.length > 0) {
-      setItems((current) => [...additions, ...current]);
+  async function importItems(urls: string[]) {
+    const result = await inspirationRepository.importWebsiteUrls(urls);
+    if (result.added > 0) {
       changeScope("website");
     }
-    return { added: additions.length, skipped };
+    return result;
   }
 
   const clearConditions = () => { setQuery(""); setSelectedTags([]); setActiveSavedView(null); };
@@ -191,13 +207,14 @@ export function LibraryPage() {
           {selectedTags.length ? <SelectedTagBar tags={selectedTags} onRemove={removeTag} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm" onPress={createSavedView}>保存为快捷视图</Button><Button variant="ghost" size="sm" onPress={clearConditions}>清除全部</Button></div>} /> : null}
         </div>
 
-        {visibleItems.length ? <div className={layoutMode === "list" ? "inspiration-grid is-list" : "inspiration-grid"}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry={layoutMode === "cards"} onOpen={() => setSelectedId(item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
+        {liveItems === undefined ? <div className="empty-state" aria-live="polite"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>正在打开本地收藏库</h2><p>收藏项会在读取完成后自动出现。</p></div> : visibleItems.length ? <div className={layoutMode === "list" ? "inspiration-grid is-list" : "inspiration-grid"}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry={layoutMode === "cards"} onOpen={() => openDetail(item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
       <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} />
-      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenImport={() => setDataImportOpen(true)} />
+      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} />
+      <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
       <DataImportDialog isOpen={dataImportOpen} onClose={() => setDataImportOpen(false)} onImport={importItems} />
-      <DetailDialog item={selectedItem} onClose={() => setSelectedId(null)} onNavigate={navigateDetail} />
+      <DetailDialog item={selectedItem} onClose={closeDetail} onNavigate={navigateDetail} onUpdate={(input) => inspirationRepository.updateSavedItem(selectedItem!.id, input)} onDelete={async () => { if (!selectedItem) return; await inspirationRepository.deleteSavedItem(selectedItem.id); closeDetail(); }} siteItemCount={selectedSiteItemCount} onShowSite={() => { if (!selectedItem) return; setQuery(selectedItem.siteHost); setActiveScope("all"); setSelectedTags([]); closeDetail(); }} />
     </AppShell>
   );
 }

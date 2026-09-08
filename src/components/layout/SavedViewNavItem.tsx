@@ -1,11 +1,11 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
-import type { SavedView } from "@/src/domain/inspiration";
+import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { SidebarIcon } from "./SidebarIcon";
 
 interface SavedViewNavItemProps {
-  view: SavedView;
+  view: LibrarySavedView;
   iconSrc: string;
   isActive: boolean;
   onPress: () => void;

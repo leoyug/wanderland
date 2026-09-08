@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
-import { DesignSystemPage } from "@/src/features/design-system/DesignSystemPage";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { LibraryPage } from "@/src/features/library/LibraryPage";
+
+const DesignSystemPage = import.meta.env.DEV
+  ? lazy(() => import("@/src/features/design-system/DesignSystemPage").then((module) => ({ default: module.DesignSystemPage })))
+  : null;
 
 export function App() {
   const [route, setRoute] = useState(window.location.hash);
@@ -13,8 +16,8 @@ export function App() {
 
   const openLibrary = () => { window.location.hash = ""; };
 
-  if (import.meta.env.DEV && route === "#design-system") {
-    return <DesignSystemPage onBack={openLibrary} />;
+  if (DesignSystemPage && route === "#design-system") {
+    return <Suspense fallback={null}><DesignSystemPage onBack={openLibrary} /></Suspense>;
   }
 
   return <LibraryPage />;

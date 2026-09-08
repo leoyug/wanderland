@@ -9,7 +9,7 @@ type ImportMode = "urls" | "bookmarks";
 interface DataImportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (urls: string[]) => { added: number; skipped: number };
+  onImport: (urls: string[]) => Promise<{ added: number; skipped: number }>;
 }
 
 function extractUrls(value: string, mode: ImportMode) {
@@ -38,13 +38,19 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
     if (isOpen) { setMode("urls"); setValue(""); setError(""); }
   }, [isOpen]);
 
-  const submit = () => {
+  const submit = async () => {
     const urls = extractUrls(value, mode);
     if (urls.length === 0) {
       setError(mode === "urls" ? "没有找到有效的 http:// 或 https:// 链接" : "书签 HTML 中没有找到可导入的链接");
       return;
     }
-    const result = onImport(urls);
+    let result: { added: number; skipped: number };
+    try {
+      result = await onImport(urls);
+    } catch {
+      setError("导入未能写入本地收藏库，请重试。");
+      return;
+    }
     if (result.added === 0) {
       setError(`没有新增内容，${result.skipped} 个链接已存在。`);
       return;
@@ -56,7 +62,7 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
     <ModalOverlay className="detail-overlay" isOpen={isOpen} isDismissable onOpenChange={(open) => !open && onClose()}>
       <Modal className="form-modal import-modal">
         <Dialog className="form-dialog">
-          {({ close }) => <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
+          {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <header className="form-dialog-header"><div className="form-dialog-icon"><RiLinksLine size={20} /></div><div><Heading slot="title">导入收藏项</Heading><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
               <div className="import-mode" aria-label="导入方式">

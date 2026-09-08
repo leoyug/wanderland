@@ -13,9 +13,8 @@ import { FacetFilter } from "@/src/components/ui/FacetFilter";
 import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
-import { StatusDot } from "@/src/components/ui/StatusDot";
 import { inspirationItems } from "@/src/data/demo";
-import type { SavedView } from "@/src/domain/inspiration";
+import type { LibrarySavedView } from "@/src/domain/inspiration";
 
 const colors = [
   { name: "页面背景", token: "--color-canvas", value: "#F4F1ED" },
@@ -50,10 +49,10 @@ function PreviewSection({ title, description, children }: { title: string; descr
 }
 
 export function DesignSystemPage({ onBack }: { onBack: () => void }) {
-  const [previewViews, setPreviewViews] = useState<SavedView[]>([
-    { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article" },
-    { id: "preview-design", name: "设计灵感", scope: "website", tags: ["设计灵感"] },
-    { id: "preview-dev", name: "开发资源", scope: "all", tags: ["组件库"] },
+  const [previewViews, setPreviewViews] = useState<LibrarySavedView[]>([
+    { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article", tagIds: [], tags: [], sortOrder: 0, createdAt: 0, updatedAt: 0 },
+    { id: "preview-design", name: "设计灵感", isSystem: false, scope: "website", tagIds: ["design"], tags: ["设计灵感"], sortOrder: 1, createdAt: 0, updatedAt: 0 },
+    { id: "preview-dev", name: "开发资源", isSystem: false, scope: "all", tagIds: ["components"], tags: ["组件库"], sortOrder: 2, createdAt: 0, updatedAt: 0 },
   ]);
   const [activePreviewView, setActivePreviewView] = useState("preview-design");
   const [previewTags, setPreviewTags] = useState<string[]>(["design"]);
@@ -95,7 +94,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
           </div>
         </PreviewSection>
 
-        <PreviewSection title="按钮与状态" description="通过既有 variant 扩展语义，而不是创建相似按钮。">
+        <PreviewSection title="按钮与控件" description="通过既有 variant 扩展语义，而不是创建相似按钮。">
           <div className="component-stack">
             <div className="component-row">
               <Button variant="primary"><RiAddLine size={16} />添加链接</Button>
@@ -105,7 +104,6 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
               <Button variant="primary" isDisabled>正在保存</Button>
             </div>
             <div className="component-row">
-              <StatusDot status="complete" /><StatusDot status="pending" /><StatusDot status="failed" />
               <Badge>产品设计</Badge><Badge variant="neutral">React Aria</Badge>
               <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={[{ id: "design", label: "#设计", count: 15 }, { id: "react", label: "#React", count: 8 }, { id: "motion", label: "#动效", count: 6 }]} selectedValues={previewTags} onChange={setPreviewTags} searchable searchPlaceholder="搜索标签" />
               <SelectMenu label="排序方式" value={previewSort} options={[{ value: "newest", label: "最新" }, { value: "oldest", label: "最旧" }]} onChange={setPreviewSort} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} />

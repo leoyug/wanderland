@@ -1,27 +1,48 @@
-import type { SavedItem, SavedView } from "@/src/domain/inspiration";
+import { formatUrlIdentity, normalizeUrl } from "@/src/capture/normalizeUrl";
+import type { AiStatus, CoverData, DescriptionSource, LibraryItem, LibrarySavedView, SavedItemKind } from "@/src/domain/inspiration";
 
-export const savedViews: SavedView[] = [
-  { id: "read-later", name: "稍后阅读", isSystem: true, scope: "article" },
+const demoTime = new Date("2026-09-08T00:00:00+08:00").getTime();
+
+export const savedViews: LibrarySavedView[] = [
+  { id: "read-later", name: "稍后阅读", isSystem: true, scope: "article", tagIds: [], tags: [], sortOrder: 0, createdAt: demoTime, updatedAt: demoTime },
 ];
 
-type DemoItem = Omit<SavedItem, "savedAt" | "aiStatus" | "cover" | "isFavorite"> & {
+interface DemoItem {
+  id: string;
+  kind: SavedItemKind;
+  title: string;
+  siteHost: string;
+  description: string;
+  descriptionSource?: DescriptionSource;
+  url: string;
+  tags: string[];
   isFavorite?: boolean;
-  aiStatus?: SavedItem["aiStatus"];
+  aiStatus?: AiStatus;
   coverImage?: string;
   coverLabel?: string;
   coverBackground?: string;
   coverForeground?: string;
-  coverMotif?: SavedItem["cover"]["motif"];
-};
+  coverMotif?: CoverData["motif"];
+  siteIcon?: string;
+}
 
-function createDemoItem(item: DemoItem): SavedItem {
+function createDemoItem(item: DemoItem): LibraryItem {
   const { isFavorite = false, aiStatus = "complete", descriptionSource = "page", coverImage, coverLabel, coverBackground, coverForeground, coverMotif, ...content } = item;
+  const canonicalUrl = normalizeUrl(item.url);
   return {
     ...content,
+    originalUrl: item.url,
+    canonicalUrl,
+    sourceLabel: formatUrlIdentity(canonicalUrl),
+    tagIds: [],
     descriptionSource,
     savedAt: "演示导入",
+    snapshotStatus: aiStatus === "complete" ? "complete" : "pending",
+    snapshotText: "",
     aiStatus,
     isFavorite,
+    createdAt: demoTime,
+    updatedAt: demoTime,
     cover: {
       background: coverBackground ?? "#f4f1ed",
       foreground: coverForeground ?? "#2e2e2e",
@@ -32,7 +53,7 @@ function createDemoItem(item: DemoItem): SavedItem {
   };
 }
 
-export const inspirationItems: SavedItem[] = [
+export const inspirationItems: LibraryItem[] = [
   createDemoItem({
     id: "animations-on-the-web", title: "Animations on the Web", siteHost: "animations.dev",
     description: "一套关于网页动效设计与实现的系统课程，讲清楚缓动、弹簧、手势和界面反馈为何有效。",

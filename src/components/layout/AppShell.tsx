@@ -1,15 +1,15 @@
 import { RiAddLine } from "@remixicon/react";
 import type { ReactNode } from "react";
-import type { LibraryScope, SavedItem, SavedItemKind, SavedView } from "@/src/domain/inspiration";
+import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { SavedViewNavItem } from "./SavedViewNavItem";
 import { SidebarIcon } from "./SidebarIcon";
 import { SidebarNavItem } from "./SidebarNavItem";
 
 interface AppShellProps {
-  items: SavedItem[];
+  items: LibraryItem[];
   activeScope: LibraryScope;
   activeSavedView: string | null;
-  savedViews: SavedView[];
+  savedViews: LibrarySavedView[];
   onScopeChange: (scope: LibraryScope) => void;
   onSavedViewChange: (viewId: string) => void;
   onSavedViewRename: (viewId: string, name: string) => void;
@@ -33,7 +33,7 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
     : scope === "favorites"
       ? items.filter((item) => item.isFavorite).length
       : scope === "unprocessed"
-        ? items.filter((item) => item.aiStatus !== "complete").length
+        ? items.filter((item) => !isSavedItemProcessed(item)).length
         : items.filter((item) => item.kind === scope).length;
   const renderScope = (scope: LibraryScope, label: string, icon: string) => <SidebarNavItem icon={<SidebarIcon src={icon} />} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} />;
 

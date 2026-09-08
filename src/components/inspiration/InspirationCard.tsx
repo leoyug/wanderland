@@ -1,14 +1,14 @@
 import { RiArrowRightUpLine, RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
 import { useLayoutEffect, useRef } from "react";
 import { Badge } from "@/src/components/ui/Badge";
-import type { SavedItem } from "@/src/domain/inspiration";
+import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { CoverArt } from "./CoverArt";
 
 export type InspirationLayout = "cards" | "list";
 
 interface InspirationCardProps {
-  item: SavedItem;
+  item: LibraryItem;
   onOpen: () => void;
   onTagClick: (tag: string) => void;
   onToggleFavorite?: () => void;
@@ -29,7 +29,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, la
     return () => { observer.disconnect(); card.style.removeProperty("grid-row-end"); };
   }, [masonry]);
 
-  const body = <div className="card-body"><a href={item.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><h2>{item.title}</h2></a>{item.description ? <p>{item.description}</p> : null}</div>;
+  const body = <div className="card-body"><h2>{item.title}</h2>{item.description ? <p>{item.description}</p> : null}</div>;
   const cover = <div className="card-cover-wrap"><CoverArt item={item} /></div>;
   const tags = item.tags.length > 0 ? <footer className="card-tags">{item.tags.map((tag) => <Badge key={tag} variant="neutral" onClick={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}</footer> : null;
   const followContent = <div className="follow-profile">{item.siteIcon ? <img className="follow-avatar" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}{body}</div>;
@@ -37,7 +37,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, la
   return (
     <article ref={cardRef} className={cn("inspiration-card", `kind-${item.kind}`, layout === "list" && "is-list")} tabIndex={0} onClick={onOpen} onKeyDown={(event) => event.key === "Enter" && onOpen()}>
       <header className="card-source-row">
-        <div>{item.siteIcon ? <img className="source-mark" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}<span>{item.siteHost}</span></div>
+        <div>{item.siteIcon ? <img className="source-mark" src={item.siteIcon} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.hidden = true; }} /> : null}<a className="card-url-link" href={item.url} target="_blank" rel="noreferrer" title={item.sourceLabel} onClick={(event) => event.stopPropagation()}>{item.sourceLabel}</a></div>
         <div className="source-actions">
           {onToggleFavorite && <button className={cn("favorite-button", item.isFavorite && "is-active")} type="button" aria-label={item.isFavorite ? "取消星标" : "添加星标"} aria-pressed={item.isFavorite} onClick={(event) => { event.stopPropagation(); onToggleFavorite(); }}>{item.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />}</button>}
           <a className="card-source-link" href={item.url} target="_blank" rel="noreferrer" aria-label="打开原网页" onClick={(event) => event.stopPropagation()}><RiArrowRightUpLine size={16} /></a>

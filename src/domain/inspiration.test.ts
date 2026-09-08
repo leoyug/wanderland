@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveDescription } from "./inspiration";
+import { isSavedItemProcessed, resolveDescription } from "./inspiration";
 
 describe("resolveDescription", () => {
   it("never lets page or AI processing overwrite a user description", () => {
@@ -28,5 +28,14 @@ describe("resolveDescription", () => {
       { description: "旧的用户描述", descriptionSource: "user" },
       { description: "新的用户描述", source: "user" },
     )).toEqual({ description: "新的用户描述", descriptionSource: "user" });
+  });
+});
+
+describe("isSavedItemProcessed", () => {
+  it("requires either a user description or at least one tag", () => {
+    expect(isSavedItemProcessed({ descriptionSource: undefined, tagIds: [] })).toBe(false);
+    expect(isSavedItemProcessed({ descriptionSource: "page", tagIds: [] })).toBe(false);
+    expect(isSavedItemProcessed({ descriptionSource: "user", tagIds: [] })).toBe(true);
+    expect(isSavedItemProcessed({ descriptionSource: undefined, tagIds: ["tag-1"] })).toBe(true);
   });
 });

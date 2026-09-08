@@ -323,32 +323,15 @@ V1 不申请 `<all_urls>`。只在用户主动收藏时通过 `activeTab` 读取
 
 ## 12. 实施顺序
 
-### Milestone 1：收藏闭环
+详细进度、阶段出口和发布门禁统一维护在 `ROADMAP.md`，本节只保留技术实施顺序：
 
-- WXT + React + TypeScript 骨架。
-- Manifest V3 权限。
-- Popup 收藏和可选描述。
-- Content Script 提取。
-- Dexie 数据库。
-- Dashboard 基础卡片。
+1. **v0.3 Local Core**：补齐领域模型，建立 Dexie schema、迁移与 repository，把 Dashboard 从演示数组迁移到真实本地数据。
+2. **v0.4 Capture & Snapshot**：实现 Popup 当前页添加、脚本采集、Readability、DOMPurify、正文快照和可恢复后台任务。
+3. **v0.5 Organize & Find**：实现 MiniSearch、完整标签管理、编辑删除、站点组、快照阅读、图片浏览和 URL 状态恢复。
+4. **v0.6 AI Assistant**：实现 Provider 设置、Zod 结构化输出、AI 描述与标签、失败恢复和人工重试。
+5. **v1.0 Validation Release**：完成真实 MV3 端到端测试、Chrome/Edge 验收、可访问性和真实数据试用。
 
-### Milestone 2：整理和查找
-
-- 网站、文章、关注源三种固定内容类型。
-- 可编辑标签与可组合快捷视图。
-- 标签管理。
-- MiniSearch 全文搜索。
-- 筛选、瀑布流卡片墙和居中详情灯箱。
-- 沉浸式图片浏览与键盘导航。
-- URL 去重与站点聚合。
-
-### Milestone 3：AI 整理和导入
-
-- Provider 设置与 API Key 风险提示。
-- Zod 结构化输出。
-- AI 描述和标签。
-- 失败任务重试。
-- 书签 HTML 和批量 URL 导入。
+执行时必须先完成本地无 AI 闭环，再接入 AI。每个阶段的完成以 `ROADMAP.md` 定义的用户可观察行为为准。
 
 ## 13. 与产品文档的一致性
 

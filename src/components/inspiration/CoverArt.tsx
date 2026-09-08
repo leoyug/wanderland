@@ -1,13 +1,21 @@
-import type { SavedItem } from "@/src/domain/inspiration";
+import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { useEffect, useState } from "react";
 
-export function CoverArt({ item, large = false }: { item: SavedItem; large?: boolean }) {
+export function CoverArt({ item, large = false, fit = "cover" }: { item: LibraryItem; large?: boolean; fit?: "cover" | "contain" }) {
   const [imageFailed, setImageFailed] = useState(false);
-  useEffect(() => setImageFailed(false), [item.cover.image]);
+  const [blobUrl, setBlobUrl] = useState<string>();
+  useEffect(() => {
+    setImageFailed(false);
+    if (!item.cover.blob) { setBlobUrl(undefined); return; }
+    const nextUrl = URL.createObjectURL(item.cover.blob);
+    setBlobUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [item.cover.blob, item.cover.image]);
 
-  if (item.cover.image && !imageFailed) {
-    return <img className={cn("cover-image", large && "cover-large")} src={item.cover.image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => setImageFailed(true)} />;
+  const image = item.cover.image ?? blobUrl;
+  if (image && !imageFailed) {
+    return <img className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => setImageFailed(true)} />;
   }
   return (
     <div
