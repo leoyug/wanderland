@@ -1,8 +1,8 @@
 import { RiArticleLine, RiCloseLine, RiGlobalLine, RiUserFollowLine } from "@remixicon/react";
 import { useEffect, useState } from "react";
-import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
+import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 import type { SavedItemKind } from "@/src/domain/inspiration";
 
 const kindMeta = {
@@ -53,7 +53,7 @@ export function ImportDialog({ kind, onClose, onAdd }: ImportDialogProps) {
       <Modal className="form-modal">
         <Dialog className="form-dialog">
           {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <header className="form-dialog-header"><div className="form-dialog-icon"><Icon size={20} /></div><div><Heading slot="title">添加{meta.label}</Heading><p>{meta.help}</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header"><div className="form-dialog-icon"><Icon size={20} /></div><div><DialogTitle>添加{meta.label}</DialogTitle><p>{meta.help}</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
               <Field label="链接" placeholder="https://example.com" value={url} onChange={setUrl} autoFocus />
               <Field label="描述（可选）" placeholder="写下一段便于以后识别的描述" value={description} onChange={setDescription} multiline />

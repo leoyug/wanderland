@@ -49,6 +49,38 @@ WXT 官方支持 React、Vue、Svelte 和 Solid，能为不同浏览器生成扩
 
 参考：[WXT](https://wxt.dev/)、[WXT 前端框架支持](https://wxt.dev/guide/essentials/frontend-frameworks.html)、[Chrome Manifest V3](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)、[Intent UI 介绍](https://intentui.com/docs/getting-started/introduction)、[Intent UI 安装](https://intentui.com/docs/getting-started/installation)
 
+### 2.1 Intent UI 使用规范
+
+Intent UI 当前 registry 是共享 UI 组件的首选结构来源。组件通过 registry 按需复制到项目，源码由项目维护；不得把 Intent UI 当成运行时黑盒依赖，也不得在业务页面中绕过共享层直接拼装 React Aria 原语。
+
+组件选择顺序：
+
+1. 先复用 `src/components/ui/`、布局组件和领域组件中已有实现。
+2. 缺少组件时查询 Intent UI 当前 registry；存在对应项则复制其源码和组合结构。
+3. 使用 Wanderland 的 Display-P3 语义 token、圆角、字号和状态样式完成视觉适配，同时保留 Intent UI 的 slot、受控 API、键盘行为和可访问性语义。
+4. Intent UI 示例中的 Heroicons 统一替换为 `@remixicon/react`；侧栏仍使用 Figma 导出的品牌 SVG。
+5. 只有 Intent UI 没有对应能力，或其通用实现无法满足已记录的扩展运行约束时，才允许新增专用组件，并在文档中记录原因。
+
+当前组件映射：
+
+| 项目组件 | Intent UI 对应组件 | 项目适配 |
+| --- | --- | --- |
+| `Button` | Button | 保留 `primary / secondary / ghost / danger` 语义与 Remix Icon |
+| `Field` | Text Field | 单行与多行输入统一表面、焦点和描述字体 |
+| `SearchField` | Search Field | 支持工作台快捷键与筛选内搜索 |
+| `SelectMenu` | Select | 使用项目统一的 Popover 表面与工具栏触发器 |
+| `Modal` / `Dialog` | Modal / Dialog | 统一遮罩、焦点陷阱、关闭恢复与详情状态机 |
+| `Switch` | Switch | 使用 `SwitchField + SwitchButton`，覆盖开关、焦点和禁用态 |
+| `RadioGroup` | Radio Group | 用于互斥选项，不用 checkbox 或 Switch 代替 |
+| `SegmentedControl` | Toggle Group | 使用单选 `ToggleButtonGroup` 表达布局和模式切换 |
+| `Badge` | Badge | 保留 `#` 前缀和标签语义色 |
+| `Card` | Card | 作为无业务语义的基础表面，领域卡片另行组合 |
+| `FacetFilter` | Popover + Search Field + Checkbox | 保留多选筛选、数量和清除操作 |
+| 侧栏设置入口 | Menu | 锚定在侧栏设置按钮上方，具体任务再打开对应 Modal |
+| `TagInput` | Combo Box + Tag Group 的专用组合 | 保留 Shadow Root Portal、视口定位、创建标签和滚动隔离，暂不直接替换为普通 ComboBox |
+
+依赖边界：`features/`、`entrypoints/` 与领域组件不得直接导入 `react-aria-components`。React Aria import 只允许存在于 `src/components/ui/`；新增共享组件后必须在 `dashboard.html#design-system` 增加代表性的默认、选中、焦点或禁用示例，并运行 `pnpm check`。
+
 ## 3. 扩展结构
 
 ```text
@@ -79,6 +111,8 @@ src/
 - **Service Worker**：协调消息、任务状态和失败重试，不保存只存在于内存的重要状态。
 
 Manifest V3 的 Service Worker 会在闲置时停止，因此抓取和 AI 处理任务必须先持久化，再异步执行。
+
+界面语言通过 `src/i18n/language.ts` 统一管理并保存在 `chrome.storage.local`。V1 默认使用 `zh-CN` 且暂不显示语言切换入口；AI 描述与标签从该设置读取输出语言，不读取网页原文语言。后续增加语言选择时扩展 `supportedAppLanguages` 并调用同一读写接口，Provider 与持久化任务结构保持不变。
 
 参考：[Chrome Service Worker 迁移说明](https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers)
 

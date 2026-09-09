@@ -1,8 +1,8 @@
 import { RiCloseLine, RiFileTextLine, RiLinksLine } from "@remixicon/react";
 import { useEffect, useState } from "react";
-import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
+import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 
 type ImportMode = "urls" | "bookmarks";
 
@@ -63,7 +63,7 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
       <Modal className="form-modal import-modal">
         <Dialog className="form-dialog">
           {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <header className="form-dialog-header"><div className="form-dialog-icon"><RiLinksLine size={20} /></div><div><Heading slot="title">导入收藏项</Heading><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header"><div className="form-dialog-icon"><RiLinksLine size={20} /></div><div><DialogTitle>导入收藏项</DialogTitle><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
               <div className="import-mode" aria-label="导入方式">
                 <button type="button" aria-pressed={mode === "urls"} onClick={() => { setMode("urls"); setError(""); }}><RiLinksLine size={15} />批量链接</button>

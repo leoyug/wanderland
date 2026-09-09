@@ -47,7 +47,7 @@ src/
 设计系统采用三层结构：
 
 1. **Token 层**：`src/design-system/tokens.css` 定义颜色、圆角、阴影、排版和间距。所有页面使用语义 token，不直接散落近似色值。
-2. **UI 原语层**：`src/components/ui/` 封装 React Aria Components。基础组件负责键盘交互、焦点、状态与通用 variant，不包含业务文案。
+2. **UI 原语层**：`src/components/ui/` 优先从 Intent UI registry 按需复制并按项目 token 定制；Intent UI 以 React Aria Components 为交互基础。基础组件负责键盘交互、焦点、状态与通用 variant，不包含业务文案。
 3. **领域组件层**：`src/components/inspiration/` 等目录组合 UI 原语与领域模型，形成可在多个 feature 中复用的卡片、封面和状态展示。
 
 通用界面图标统一来自 `@remixicon/react`，禁止混用其他图标库；优先使用 `Line` 图标，明确的选中或收藏状态可使用 `Fill` 图标。站点 favicon 与内容封面不属于通用图标，应使用设计稿或收藏数据提供的真实资源，并放入 `public/assets/` 或后续的持久化资源层。
@@ -67,11 +67,14 @@ src/
 开发页面时必须优先复用已有组件。
 
 - 先查找 `src/components/ui/`、`src/components/layout/`、对应领域组件目录和相邻 feature。
+- 现有组件不能满足需求时，先查询 Intent UI 当前版本的 registry；存在对应组件时复制源码并按 Wanderland 的语义 token 定制，不得跳过 Intent UI 直接从 React Aria 原语重新设计同类组件。
+- `features/`、`entrypoints/` 与领域组件不得直接导入 `react-aria-components`；React Aria import 只允许出现在 `src/components/ui/` 的 Intent UI 适配层。若业务需要新交互，先把对应原语收口为共享组件。
+- 复制 Intent UI 组件时保留其组件分层、slot、受控状态和可访问性行为；视觉类名改用现有语义 token。Intent UI 示例中的 Heroicons 必须替换为项目统一的 Remix Icon，不得引入第二套图标依赖。
 - 如果已有组件可以通过 `props`、`variant`、`size`、`slot` 或 `className` 扩展，应优先扩展现有组件，而不是重新创建相似组件。
 - 页面不得复制按钮、输入框、卡片、标签、状态、Modal 等基础样式。
 - 多选条件筛选统一复用 `src/components/ui/FacetFilter.tsx`；页面只提供选项、数量与筛选状态，不自行复制筛选浮层、搜索框或勾选行样式。
 - 只有现有组件在语义、交互或结构上确实无法满足需求时，才允许新增组件。
-- 新增基础组件必须基于 React Aria 的相应原语或原生语义元素，补齐 hover、focus-visible、disabled、loading、error 与 reduced-motion 状态。
+- Intent UI 没有对应能力时，新增基础组件才直接基于 React Aria 的相应原语或原生语义元素，并补齐 hover、focus-visible、disabled、loading、error 与 reduced-motion 状态。
 - 业务组件接收领域对象或明确的业务 props；不要让页面传入大量零散样式参数来拼装同一种组件。
 - `className` 用于布局适配和有限视觉覆盖，不应用来复制另一个 variant。重复出现两次以上的覆盖应提炼为正式 variant 或共享组件。
 
@@ -81,7 +84,7 @@ src/
 2. 在现有 UI 与领域组件中寻找可复用项。
 3. 通过 props/variant 扩展最接近的组件，并在设计系统预览补充状态。
 4. 页面只实现布局、数据编排和流程；共享样式回收到 token 或组件层。
-5. 运行 `pnpm check`，再在开发环境检查工作台与 `#design-system`。
+5. 确认业务层不存在新增的 `react-aria-components` 直连，运行 `pnpm check`，再在开发环境检查工作台与 `#design-system`。
 
 ## 后续开发注意事项
 

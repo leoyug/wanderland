@@ -23,6 +23,7 @@ export type ExtensionRequest =
   | { type: "capture:retry"; itemId: string }
   | { type: "ai:config:get" }
   | { type: "ai:config:save"; settings: AiSettings & { apiKey?: string } }
+  | { type: "ai:config:test"; settings: AiSettings & { apiKey?: string } }
   | { type: "ai:process" }
   | { type: "ai:retry"; itemId: string }
   | { type: "ai:retry-failed" }

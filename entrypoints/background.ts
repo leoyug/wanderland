@@ -1,6 +1,7 @@
 import { normalizeUrl } from "@/src/capture/normalizeUrl";
-import { endpointPermissionPattern, getAiSettings, hardenAiCredentialStorage, saveAiSettings } from "@/src/ai/config";
+import { endpointPermissionPattern, getAiSettings, getAiTestCredentials, hardenAiCredentialStorage, saveAiSettings } from "@/src/ai/config";
 import { isTrustedAiMessageSender } from "@/src/ai/messageSecurity";
+import { OpenAiCompatibleProvider } from "@/src/ai/openAiCompatibleProvider";
 import { processAiQueue } from "@/src/ai/runner";
 import type { CaptureResponse, ExtensionRequest, PageCapture } from "@/src/capture/types";
 import { inspirationRepository } from "@/src/db/repository";
@@ -127,6 +128,15 @@ export default defineBackground(() => {
         if (settings.enabled) void processAiQueue();
         return settings;
       })();
+    }
+    if (request.type === "ai:config:test") {
+      return getAiTestCredentials(request.settings).then(({ settings, apiKey }) => new OpenAiCompatibleProvider({
+        endpoint: settings.endpoint,
+        model: settings.model,
+        apiKey,
+        timeoutMs: 15_000,
+        extraBody: settings.provider === "deepseek" ? { thinking: { type: "disabled" } } : undefined,
+      }).testConnection()).then(() => ({ ok: true as const }));
     }
     if (request.type === "ai:process") return processAiQueue().then(() => inspirationRepository.getAiTaskSummary());
     if (request.type === "ai:retry") {

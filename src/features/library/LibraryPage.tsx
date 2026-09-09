@@ -1,7 +1,6 @@
 import { RiArrowUpDownLine, RiCloseLine, RiCommandLine, RiLayoutGridLine, RiListCheck3, RiPriceTag3Line, RiSearchLine } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Input, SearchField } from "react-aria-components";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
 import type { ExtensionRequest } from "@/src/capture/types";
 import { InspirationCard, type InspirationLayout } from "@/src/components/inspiration/InspirationCard";
@@ -11,6 +10,7 @@ import { FacetFilter } from "@/src/components/ui/FacetFilter";
 import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
+import { SearchField, SearchInput } from "@/src/components/ui/SearchField";
 import { seedDevelopmentData } from "@/src/db/developmentSeed";
 import { inspirationRepository } from "@/src/db/repository";
 import { isSavedItemProcessed, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
@@ -19,7 +19,6 @@ import { DataImportDialog } from "./DataImportDialog";
 import { AiSettingsDialog } from "./AiSettingsDialog";
 import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
-import { SettingsDialog } from "./SettingsDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
 
 type LayoutMode = InspirationLayout;
@@ -64,7 +63,6 @@ export function LibraryPage() {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(initialState.layout);
   const [selectedId, setSelectedId] = useState<string | null>(initialState.item);
   const [importKind, setImportKind] = useState<SavedItemKind | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [dataImportOpen, setDataImportOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
@@ -189,11 +187,11 @@ export function LibraryPage() {
   const removeTag = (tag: string) => { setSelectedTags((current) => current.filter((value) => value !== tag)); setActiveSavedView(null); };
 
   return (
-    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onSavedViewCreate={createSavedView} onOpenSettings={() => setSettingsOpen(true)}>
+    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onSavedViewCreate={createSavedView} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)}>
       <div className="library-page">
         <header className="library-intro">
           <SearchField className="library-search" value={query} onChange={setQuery} aria-label="搜索收藏项">
-            <RiSearchLine size={20} aria-hidden="true" /><Input ref={searchRef} placeholder="搜索设计、创意或关键词……" />
+            <RiSearchLine size={20} aria-hidden="true" /><SearchInput ref={searchRef} placeholder="搜索设计、创意或关键词……" />
             {query ? <Button variant="ghost" size="icon" aria-label="清除搜索" onPress={() => setQuery("")}><RiCloseLine size={15} /></Button> : <span className="shortcut"><RiCommandLine size={12} /> K</span>}
           </SearchField>
         </header>
@@ -218,7 +216,6 @@ export function LibraryPage() {
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
       <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} />
-      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)} />
       <AiSettingsDialog isOpen={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
       <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
       <DataImportDialog isOpen={dataImportOpen} onClose={() => setDataImportOpen(false)} onImport={importItems} />

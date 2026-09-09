@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAiSettings, hardenAiCredentialStorage, saveAiSettings } from "./config";
+import { getAiSettings, getAiTestCredentials, hardenAiCredentialStorage, saveAiSettings } from "./config";
 
 function storageArea() {
   const values: Record<string, unknown> = {};
@@ -54,6 +54,18 @@ describe("AI settings storage", () => {
 
     expect(view.hasApiKey).toBe(false);
     expect(Object.values(session.values)).not.toContain("openai-secret");
+  });
+
+  it("resolves test credentials without persisting an unsaved key", async () => {
+    const local = storageArea();
+    const session = storageArea();
+    vi.stubGlobal("browser", { storage: { local, session } });
+
+    const result = await getAiTestCredentials({ enabled: true, provider: "custom", endpoint: "https://api.example.com/v1", model: "model", apiKeyStorage: "session", apiKey: "temporary-secret" });
+
+    expect(result.apiKey).toBe("temporary-secret");
+    expect(Object.values(local.values)).not.toContain("temporary-secret");
+    expect(Object.values(session.values)).not.toContain("temporary-secret");
   });
 
   it("rejects insecure or credential-bearing endpoints before storing a key", async () => {

@@ -1,5 +1,6 @@
 import { pageAnalysisSchema, type AiAnalysisInput, type AiProvider, type PageAnalysis } from "./types";
 import { assertSecureAiEndpoint } from "./config";
+import type { AppLanguage } from "@/src/i18n/language";
 
 export class AiProviderError extends Error {
   constructor(message: string, readonly retryable: boolean) {
@@ -22,8 +23,43 @@ function extractJson(content: string) {
   return JSON.parse((fenced ?? content).trim()) as unknown;
 }
 
+const outputLanguageInstructions: Record<AppLanguage, string> = {
+  "zh-CN": "description 必须使用自然、简洁的简体中文，不超过 120 个汉字；产品名、品牌名、技术名等必要专有名词可以保留原文。tags 也优先使用简体中文。",
+  "en-US": "description must use concise, natural English and stay within 120 words. Product, brand, and technology names may retain their original spelling. tags should also use English where possible.",
+};
+
 export class OpenAiCompatibleProvider implements AiProvider {
-  constructor(private readonly options: { endpoint: string; model: string; apiKey: string; timeoutMs?: number; extraBody?: Record<string, unknown> }) {}
+  constructor(private readonly options: { endpoint: string; model: string; apiKey: string; outputLanguage?: AppLanguage; timeoutMs?: number; extraBody?: Record<string, unknown> }) {}
+
+  async testConnection(): Promise<void> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs ?? 15_000);
+    try {
+      const response = await fetch(completionUrl(this.options.endpoint), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.options.apiKey}` },
+        signal: controller.signal,
+        redirect: "error",
+        body: JSON.stringify({
+          model: this.options.model,
+          temperature: 0,
+          max_tokens: 1,
+          ...this.options.extraBody,
+          messages: [{ role: "user", content: "Reply OK." }],
+        }),
+      });
+      if (!response.ok) {
+        const detail = redactSecret((await response.text()).slice(0, 240), this.options.apiKey);
+        throw new AiProviderError(`Provider 返回 ${response.status}${detail ? `：${detail}` : ""}`, response.status === 408 || response.status === 429 || response.status >= 500);
+      }
+    } catch (error) {
+      if (error instanceof AiProviderError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") throw new AiProviderError("连接测试超时", true);
+      throw new AiProviderError(redactSecret(error instanceof Error ? error.message : "连接测试失败", this.options.apiKey), true);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   async analyze(input: AiAnalysisInput): Promise<PageAnalysis> {
     const controller = new AbortController();
@@ -43,7 +79,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
           messages: [
             {
               role: "system",
-              content: "你是个人灵感库的整理助手。只返回 JSON：{\"description\":\"不超过120个汉字的识别性描述\",\"tags\":[\"3到5个简洁标签\"]}。标签优先复用已有标签或别名，避免近义词和重复概念。不要返回 Markdown。",
+              content: `你是个人灵感库的整理助手。无论网页原文使用什么语言，${outputLanguageInstructions[this.options.outputLanguage ?? "zh-CN"]} 标签优先复用已有标签或别名，避免近义词和重复概念。只返回 JSON：{\"description\":\"识别性描述\",\"tags\":[\"3到5个简洁标签\"]}，不要返回 Markdown。`,
             },
             {
               role: "user",

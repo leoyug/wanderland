@@ -17,3 +17,5 @@ export function Field({ label, placeholder, multiline, rows, className, ...props
     </TextField>
   );
 }
+
+export { Input };

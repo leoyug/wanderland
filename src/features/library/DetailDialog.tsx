@@ -1,11 +1,11 @@
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiImageLine, RiRefreshLine, RiSparkling2Line } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
-import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { CoverArt } from "@/src/components/inspiration/CoverArt";
 import { Badge } from "@/src/components/ui/Badge";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
+import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 import { TagInput } from "@/src/components/ui/TagInput";
 import { inspirationRepository } from "@/src/db/repository";
 import type { ExtensionRequest } from "@/src/capture/types";
@@ -94,7 +94,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
           </header>
           <div className="detail-scroll">
             {mode === "snapshot" ? (
-              <article className="snapshot-reader"><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><Heading slot="title">{snapshot?.title || item.title}</Heading>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">这个收藏项还没有可阅读的正文快照。</p>}</article>
+              <article className="snapshot-reader"><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><DialogTitle>{snapshot?.title || item.title}</DialogTitle>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">这个收藏项还没有可阅读的正文快照。</p>}</article>
             ) : mode === "image" ? (
               <div className="image-viewer"><CoverArt item={item} large fit="contain" /><p>{item.title}</p></div>
             ) : (
@@ -107,7 +107,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                     <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen />
                     <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "选择后将锁定封面，不再被自动采集覆盖。"}</small></div><input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => setCoverBlob(event.target.files?.[0])} /></div>
                   </form> : <>
-                    <div className="detail-title-row"><div><Heading slot="title">{item.title}</Heading><p>{item.description || "暂无描述"}</p></div></div>
+                    <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || "暂无描述"}</p></div></div>
                     <section className="detail-section"><div className="detail-taxonomy"><span className="kind-chip">{kindLabel}</span><div className="tag-list">{item.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}</div></div></section>
                   </>}
                   {siteItemCount > 1 ? <Button variant="ghost" size="sm" onPress={onShowSite}>查看来自 {item.siteHost} 的 {siteItemCount} 个收藏项</Button> : null}

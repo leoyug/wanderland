@@ -1,6 +1,7 @@
 import { getAiCredentials } from "./config";
 import { AiProviderError, OpenAiCompatibleProvider } from "./openAiCompatibleProvider";
 import { inspirationRepository } from "@/src/db/repository";
+import { getAppLanguage } from "@/src/i18n/language";
 
 let activeRun: Promise<void> | undefined;
 let rerunRequested = false;
@@ -8,10 +9,12 @@ let rerunRequested = false;
 async function runQueue() {
   const credentials = await getAiCredentials();
   if (!credentials) return;
+  const outputLanguage = await getAppLanguage();
   const provider = new OpenAiCompatibleProvider({
     endpoint: credentials.settings.endpoint,
     model: credentials.settings.model,
     apiKey: credentials.apiKey,
+    outputLanguage,
     extraBody: credentials.settings.provider === "deepseek" ? { thinking: { type: "disabled" } } : undefined,
   });
   const tasks = await inspirationRepository.listRunnableAiTasks();

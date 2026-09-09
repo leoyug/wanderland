@@ -10,9 +10,11 @@ import { Button } from "@/src/components/ui/Button";
 import { Card } from "@/src/components/ui/Card";
 import { Field } from "@/src/components/ui/Field";
 import { FacetFilter } from "@/src/components/ui/FacetFilter";
+import { RadioGroup } from "@/src/components/ui/RadioGroup";
 import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
+import { Switch } from "@/src/components/ui/Switch";
 import { inspirationItems } from "@/src/data/demo";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 
@@ -57,6 +59,8 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
   const [activePreviewView, setActivePreviewView] = useState("preview-design");
   const [previewTags, setPreviewTags] = useState<string[]>(["design"]);
   const [previewSort, setPreviewSort] = useState<"newest" | "oldest">("newest");
+  const [previewSwitch, setPreviewSwitch] = useState(true);
+  const [previewStorage, setPreviewStorage] = useState<"session" | "local">("session");
   const movePreviewView = (sourceId: string, targetId: string) => {
     setPreviewViews((current) => {
       const system = current.filter((view) => view.isSystem);
@@ -104,6 +108,9 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
               <Button variant="primary" isDisabled>正在保存</Button>
             </div>
             <div className="component-row">
+              <Switch label="自动整理" description="保存后生成描述与标签" isSelected={previewSwitch} onChange={setPreviewSwitch} />
+              <Switch label="停用状态" isDisabled />
+              <RadioGroup className="ai-key-storage" label="保存方式" value={previewStorage} onChange={setPreviewStorage} options={[{ value: "session", label: "仅当前会话" }, { value: "local", label: "本地浏览器" }]} />
               <Badge>产品设计</Badge><Badge variant="neutral">React Aria</Badge>
               <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={[{ id: "design", label: "#设计", count: 15 }, { id: "react", label: "#React", count: 8 }, { id: "motion", label: "#动效", count: 6 }]} selectedValues={previewTags} onChange={setPreviewTags} searchable searchPlaceholder="搜索标签" />
               <SelectMenu label="排序方式" value={previewSort} options={[{ value: "newest", label: "最新" }, { value: "oldest", label: "最旧" }]} onChange={setPreviewSort} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} />

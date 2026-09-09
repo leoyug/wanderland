@@ -1,9 +1,11 @@
-import { RiAddLine } from "@remixicon/react";
+import { RiAddLine, RiArticleLine, RiDownloadLine, RiPaletteLine, RiPriceTag3Line, RiSparkling2Line } from "@remixicon/react";
 import type { ReactNode } from "react";
 import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { SavedViewNavItem } from "./SavedViewNavItem";
 import { SidebarIcon } from "./SidebarIcon";
 import { SidebarNavItem } from "./SidebarNavItem";
+import { Button } from "@/src/components/ui/Button";
+import { Menu, MenuContent, MenuItem } from "@/src/components/ui/Menu";
 
 interface AppShellProps {
   items: LibraryItem[];
@@ -16,7 +18,9 @@ interface AppShellProps {
   onSavedViewDelete: (viewId: string) => void;
   onSavedViewMove: (sourceId: string, targetId: string) => void;
   onSavedViewCreate: () => void;
-  onOpenSettings: () => void;
+  onOpenImport: () => void;
+  onOpenTags: () => void;
+  onOpenAi: () => void;
   children: ReactNode;
 }
 
@@ -27,7 +31,7 @@ const kindItems: Array<{ id: SavedItemKind; label: string; icon: string }> = [
   { id: "follow", label: "关注源", icon: iconPath("follow") },
 ];
 
-export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onSavedViewCreate, onOpenSettings, children }: AppShellProps) {
+export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onSavedViewCreate, onOpenImport, onOpenTags, onOpenAi, children }: AppShellProps) {
   const countForScope = (scope: LibraryScope) => scope === "all"
     ? items.length
     : scope === "favorites"
@@ -49,7 +53,16 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
           </div></section>
         </nav>
         <div className="sidebar-bottom">
-          <SidebarNavItem className="sidebar-tool" icon={<SidebarIcon src={iconPath("settings")} />} label="设置" onPress={onOpenSettings} />
+          <Menu>
+            <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置菜单"><SidebarIcon src={iconPath("settings")} /><span>设置</span></Button>
+            <MenuContent aria-label="设置菜单">
+              <MenuItem id="import" onAction={onOpenImport}><RiDownloadLine size={16} aria-hidden="true" /><span>导入收藏</span></MenuItem>
+              <MenuItem id="tags" onAction={onOpenTags}><RiPriceTag3Line size={16} aria-hidden="true" /><span>管理标签</span></MenuItem>
+              <MenuItem id="ai" onAction={onOpenAi}><RiSparkling2Line size={16} aria-hidden="true" /><span>AI 助手</span></MenuItem>
+              <MenuItem id="appearance" className="menu-item-separated" isDisabled><RiPaletteLine size={16} aria-hidden="true" /><span>外观</span><small>后续</small></MenuItem>
+              <MenuItem id="digest" isDisabled><RiArticleLine size={16} aria-hidden="true" /><span>内容简报</span><small>后续</small></MenuItem>
+            </MenuContent>
+          </Menu>
           <p className="sidebar-copyright">© 2026 Wanderland</p>
         </div>
       </aside>

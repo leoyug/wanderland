@@ -50,6 +50,15 @@ export async function getAiCredentials(): Promise<{ settings: AiSettings; apiKey
   return { settings: view, apiKey: String(stored[key] ?? "") };
 }
 
+export async function getAiTestCredentials(input: AiSettings & { apiKey?: string }): Promise<{ settings: AiSettings; apiKey: string }> {
+  assertSecureAiEndpoint(input.endpoint);
+  const settings = cleanSettings(input);
+  const previous = await getStoredCredential();
+  const apiKey = input.apiKey?.trim() || (previous.provider === settings.provider ? previous.apiKey : "");
+  if (!apiKey) throw new Error("请先填写 API Key。");
+  return { settings, apiKey };
+}
+
 export async function saveAiSettings(input: AiSettings & { apiKey?: string }): Promise<AiSettingsView> {
   assertSecureAiEndpoint(input.endpoint);
   const previous = await getStoredCredential();
