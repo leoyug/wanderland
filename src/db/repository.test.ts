@@ -49,6 +49,27 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("returns the newly created records needed for post-import metadata capture", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    await repository.createSavedItem({ kind: "website", url: "https://example.com/existing" });
+
+    const result = await repository.importWebsiteUrls([
+      "https://example.com/existing",
+      "https://example.com/new",
+      "https://other.example/page",
+    ]);
+
+    expect(result).toMatchObject({ added: 2, skipped: 1 });
+    expect(result.addedItems.map((item) => item.url)).toEqual([
+      "https://example.com/new",
+      "https://other.example/page",
+    ]);
+    expect(result.addedItems.every((item) => item.id.length > 0)).toBe(true);
+    expect(new Set(result.addedItems.map((item) => item.id)).size).toBe(2);
+    database.close();
+  });
+
   it("keeps same-site subpages separate and gives them distinct temporary identities", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);

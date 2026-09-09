@@ -170,7 +170,7 @@ MiniSearch 索引可以从 Dexie 重建，不是业务数据源。建议权重�
 
 收藏项保存 `description` 与 `descriptionSource`。`descriptionSource` 取 `user | page | ai`，用于后台合并时保护用户输入，不作为卡片或列表中的额外展示信息。标签采集、生成、编辑和筛选流程保持不变。
 
-采集优先读取用户正在查看的页面，不再以后台请求作为第一选择。这对登录后页面和客户端渲染页面更可靠，也可以减少广泛的网站访问权限。
+采集优先读取用户正在查看的页面，不以后台请求作为默认选择。这对登录后页面和客户端渲染页面更可靠，也可以减少广泛的网站访问权限。手动添加时，用户可显式开启单站补全：Dashboard 对输入 URL 所属域名申请一次可选 Host Permission，Service Worker 使用不携带 Cookie 与 Referer 的受限请求读取公开 HTML，只提取标题、描述、canonical、favicon 和 Open Graph 封面，随后立即撤销权限。
 
 Mozilla Readability 会修改传入的 DOM，因此必须传入页面克隆。Readability 不负责防止脚本注入，其生成的 HTML 必须由 DOMPurify 清理。
 
@@ -186,18 +186,18 @@ V1 建议权限：
 }
 ```
 
-`activeTab` 在用户主动点击扩展时才临时授予当前页面访问权，可避免 V1 直接申请 `<all_urls>`。
+`activeTab` 在用户主动点击扩展时才临时授予当前页面访问权，可避免 V1 直接申请 `<all_urls>`。Manifest 另声明 `https://*/*` 为可选 Host Permission，但不会在安装时授予；手动补全和 AI Provider 只在用户操作后请求对应单一域名，任务结束或配置失效后撤销。
 
 参考：[Chrome activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)
 
 ### 5.3 批量导入的限制
 
-从书签 HTML 或批量 URL 导入时，扩展没有这些页面的 `activeTab` 权限。V1 先保存 URL、标题和文件夹上下文，将条目标记为“待补全”。
+从书签 HTML 或批量 URL 导入时，扩展没有这些页面的 `activeTab` 权限，因此始终先保存 URL、标题和文件夹上下文。用户可显式开启批量补全，由浏览器一次确认本批次去重后的精确 Host Permission 集合；Service Worker 顺序读取公开 HTML，同时提取 favicon 与 Open Graph 封面，最后统一撤销全部权限。拒绝授权或单项失败不回滚已经导入的链接；默认关闭时卡片仅尝试公开的根目录 favicon 回退。
 
 后续可选择：
 
 - 用户访问相应页面时再补抓。
-- 用户主动授予指定站点的可选 Host Permission。
+- 用户从单个收藏项发起补全，并主动授予指定站点的一次性可选 Host Permission。
 - 未来引入后端抓取服务。
 
 V1 不为了自动补全而要求读取所有网站。
@@ -312,7 +312,7 @@ V1 不引入 Redux。如果后续出现大量跨页面临时状态，再评估 Z
 9. 未星标按钮只在卡片悬停或键盘聚焦时出现；`bookmark-line`、`bookmark-3-fill` 与侧栏计数能随点击正确往返。
 10. 图片模式按一次 `Escape` 返回详情、再次按下关闭灯箱，关闭后焦点回到原卡片。
 11. 用户在添加时填写的描述不会被网页采集或 AI 结果覆盖；未填写时依次采用网页描述和 AI 总结。
-12. 卡片与列表只显示一段最终描述，不渲染备注字段或重复说明。
+12. 卡片与紧凑卡片只显示一段最终描述，不渲染备注字段或重复说明；列表按 Figma 组件不显示描述。
 13. `prefers-reduced-motion` 下灯箱和卡片不执行位移、缩放或背景模糊动画。
 
 Playwright 测试 MV3 扩展时需使用持久化 Chromium Context 加载未打包扩展。
@@ -351,7 +351,7 @@ V1 已明确不做语义搜索。本地全文检索足以验证“一分钟找�
 
 ### 全站 Host Permission
 
-V1 不申请 `<all_urls>`。只在用户主动收藏时通过 `activeTab` 读取当前页面。
+V1 不申请或持有 `<all_urls>`。当前页收藏通过 `activeTab` 读取；手动添加的公开元数据补全只在用户显式开启后请求输入 URL 所属单一域名。批量导入也必须显式开启，只请求本批次实际 URL 的去重域名集合并在同一次浏览器确认中展示。两种流程都限制响应大小与时间、不携带登录 Cookie，并在任务结束后撤销权限。
 
 ## 12. 实施顺序
 

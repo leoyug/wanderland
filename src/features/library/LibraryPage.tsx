@@ -1,9 +1,10 @@
-import { RiArrowUpDownLine, RiCloseLine, RiCommandLine, RiLayoutGridLine, RiListCheck3, RiPriceTag3Line, RiSearchLine } from "@remixicon/react";
+import { RiArrowUpDownLine, RiCloseLine, RiCommandLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
 import type { ExtensionRequest } from "@/src/capture/types";
 import { InspirationCard, type InspirationLayout } from "@/src/components/inspiration/InspirationCard";
+import { InspirationListItem } from "@/src/components/inspiration/InspirationListItem";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Button";
 import { FacetFilter } from "@/src/components/ui/FacetFilter";
@@ -15,6 +16,7 @@ import { seedDevelopmentData } from "@/src/db/developmentSeed";
 import { inspirationRepository } from "@/src/db/repository";
 import { isSavedItemProcessed, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { createLibrarySearchIndex } from "@/src/search/librarySearch";
+import { cn } from "@/src/lib/cn";
 import { DataImportDialog } from "./DataImportDialog";
 import { AiSettingsDialog } from "./AiSettingsDialog";
 import { DetailDialog } from "./DetailDialog";
@@ -25,8 +27,9 @@ type LayoutMode = InspirationLayout;
 type SortOrder = "newest" | "oldest";
 const kindLabels = { website: "网站", article: "文章", follow: "关注源" } as const;
 const layoutOptions = [
-  { value: "cards", label: "卡片排列", icon: <RiLayoutGridLine size={15} aria-hidden="true" /> },
-  { value: "list", label: "列表排列", icon: <RiListCheck3 size={15} aria-hidden="true" /> },
+  { value: "cards", label: "详情卡片", icon: <RiFunctionLine size={15} aria-hidden="true" /> },
+  { value: "compact", label: "紧凑卡片", icon: <RiListCheck2 size={15} aria-hidden="true" /> },
+  { value: "list", label: "详情列表", icon: <RiListCheck size={15} aria-hidden="true" /> },
 ] as const;
 const sortOptions = [
   { value: "newest", label: "最新" },
@@ -43,7 +46,7 @@ function readInitialState() {
     query: params.get("q") ?? "",
     tags: params.getAll("tag"),
     sort: params.get("sort") === "oldest" ? "oldest" as const : "newest" as const,
-    layout: params.get("layout") === "list" ? "list" as const : "cards" as const,
+    layout: params.get("layout") === "compact" ? "compact" as const : params.get("layout") === "list" ? "list" as const : "cards" as const,
     item: params.get("item"),
     view: params.get("view"),
   };
@@ -166,16 +169,57 @@ export function LibraryPage() {
     });
   }
 
-  async function addItem({ kind, url, description }: { kind: SavedItemKind; url: string; description: string }) {
-    const result = await inspirationRepository.createSavedItem({ kind, url, description, captureMethod: "manual-url" });
-    if (!result.created) return false;
+  async function addItem({ kind, url, description, enrichMetadata }: { kind: SavedItemKind; url: string; description: string; enrichMetadata: boolean }) {
+    const target = new URL(url);
+    const permissionPattern = `${target.protocol}//${target.hostname}/*`;
+    const permissionRequest = enrichMetadata
+      ? browser.permissions.request({ origins: [permissionPattern] }).catch(() => false)
+      : Promise.resolve(false);
+    const [permissionGranted, result] = await Promise.all([
+      permissionRequest,
+      inspirationRepository.createSavedItem({ kind, url, description, captureMethod: "manual-url" }),
+    ]);
+    if (!result.created) {
+      if (permissionGranted) await browser.permissions.remove({ origins: [permissionPattern] });
+      return false;
+    }
+    if (permissionGranted) {
+      try {
+        await browser.runtime.sendMessage({ type: "capture:remote", itemId: result.item.id, url, permissionPattern } satisfies ExtensionRequest);
+      } finally {
+        await browser.permissions.remove({ origins: [permissionPattern] }).catch(() => false);
+      }
+    }
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     changeScope(kind);
     return true;
   }
 
-  async function importItems(urls: string[]) {
-    const result = await inspirationRepository.importWebsiteUrls(urls);
+  async function importItems(urls: string[], enrichMetadata: boolean) {
+    const origins = [...new Set(urls.map((url) => {
+      const target = new URL(url);
+      return `${target.protocol}//${target.hostname}/*`;
+    }))];
+    const permissionRequest = enrichMetadata
+      ? browser.permissions.request({ origins }).catch(() => false)
+      : Promise.resolve(false);
+    const [permissionGranted, result] = await Promise.all([
+      permissionRequest,
+      inspirationRepository.importWebsiteUrls(urls),
+    ]);
+    if (permissionGranted && result.addedItems.length > 0) {
+      const items = result.addedItems.map(({ id, url }) => {
+        const target = new URL(url);
+        return { itemId: id, url, permissionPattern: `${target.protocol}//${target.hostname}/*` };
+      });
+      try {
+        await browser.runtime.sendMessage({ type: "capture:remote-batch", items } satisfies ExtensionRequest);
+      } finally {
+        await browser.permissions.remove({ origins }).catch(() => false);
+      }
+    } else if (permissionGranted) {
+      await browser.permissions.remove({ origins }).catch(() => false);
+    }
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
       changeScope("website");
@@ -212,7 +256,7 @@ export function LibraryPage() {
           {selectedTags.length ? <SelectedTagBar tags={selectedTags} onRemove={removeTag} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm" onPress={createSavedView}>保存为快捷视图</Button><Button variant="ghost" size="sm" onPress={clearConditions}>清除全部</Button></div>} /> : null}
         </div>
 
-        {liveItems === undefined ? <div className="empty-state" aria-live="polite"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>正在打开本地收藏库</h2><p>收藏项会在读取完成后自动出现。</p></div> : visibleItems.length ? <div className={layoutMode === "list" ? "inspiration-grid is-list" : "inspiration-grid"}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry={layoutMode === "cards"} onOpen={() => openDetail(item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
+        {liveItems === undefined ? <div className="empty-state" aria-live="polite"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>正在打开本地收藏库</h2><p>收藏项会在读取完成后自动出现。</p></div> : visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
       <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} />

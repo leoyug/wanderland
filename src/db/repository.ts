@@ -41,6 +41,7 @@ export interface CreateSavedItemResult {
 export interface ImportSavedItemsResult {
   added: number;
   skipped: number;
+  addedItems: Array<{ id: string; url: string }>;
 }
 
 export interface DemoSeedItem {
@@ -308,7 +309,7 @@ export class InspirationRepository {
     });
   }
 
-  async completeCapture(itemId: string, capture: PageCapture) {
+  async completeCapture(itemId: string, capture: PageCapture, captureMethod: PersistentTask["captureMethod"] = "active-tab") {
     return this.database.transaction(
       "rw",
       this.database.savedItems,
@@ -335,7 +336,7 @@ export class InspirationRepository {
           excerpt: capture.excerpt,
           cleanText: capture.cleanText,
           cleanHtml: capture.cleanHtml,
-          captureMethod: "active-tab",
+          captureMethod: captureMethod ?? "active-tab",
           completeness: capture.completeness,
           error: capture.completeness === "failed" ? "页面中没有可保存的正文内容" : undefined,
         };
@@ -567,12 +568,16 @@ export class InspirationRepository {
   async importWebsiteUrls(urls: string[]): Promise<ImportSavedItemsResult> {
     let added = 0;
     let skipped = 0;
+    const addedItems: ImportSavedItemsResult["addedItems"] = [];
     for (const url of urls) {
       const result = await this.createSavedItem({ kind: "website", url, captureMethod: "import" });
-      if (result.created) added += 1;
+      if (result.created) {
+        added += 1;
+        addedItems.push({ id: result.item.id, url: result.item.originalUrl });
+      }
       else skipped += 1;
     }
-    return { added, skipped };
+    return { added, skipped, addedItems };
   }
 
   async toggleFavorite(id: string) {

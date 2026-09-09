@@ -3,11 +3,40 @@ import { endpointPermissionPattern, getAiSettings, getAiTestCredentials, hardenA
 import { isTrustedAiMessageSender } from "@/src/ai/messageSecurity";
 import { OpenAiCompatibleProvider } from "@/src/ai/openAiCompatibleProvider";
 import { processAiQueue } from "@/src/ai/runner";
+import { readRemoteMetadata } from "@/src/capture/readRemoteMetadata";
 import type { CaptureResponse, ExtensionRequest, PageCapture } from "@/src/capture/types";
 import { inspirationRepository } from "@/src/db/repository";
 
 function readableError(error: unknown) {
   return error instanceof Error ? error.message : "未知采集错误";
+}
+
+function permissionPatternForUrl(value: string) {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("只支持补全 http:// 或 https:// 网页。");
+  return `${url.protocol}//${url.hostname}/*`;
+}
+
+async function readLimitedHtml(response: Response, limit = 2_000_000) {
+  const declaredSize = Number(response.headers.get("content-length") || 0);
+  if (declaredSize > limit) throw new Error("网页内容超过 2 MB，已停止补全。");
+  if (!response.body) return (await response.text()).slice(0, limit);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let html = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > limit) {
+      await reader.cancel();
+      throw new Error("网页内容超过 2 MB，已停止补全。");
+    }
+    html += decoder.decode(value, { stream: true });
+  }
+  return html + decoder.decode();
 }
 
 async function getActiveWebTab(candidate?: Browser.tabs.Tab) {
@@ -87,6 +116,57 @@ async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capt
   }
 }
 
+async function captureRemotePage(
+  request: Extract<ExtensionRequest, { type: "capture:remote" }>,
+  revokePermission = true,
+  captureMethod: "manual-url" | "import" = "manual-url",
+): Promise<CaptureResponse> {
+  let started = false;
+  const expectedPermission = permissionPatternForUrl(request.url);
+  try {
+    if (request.permissionPattern !== expectedPermission) throw new Error("补全权限范围与目标网站不一致。");
+    if (!await browser.permissions.contains({ origins: [expectedPermission] })) throw new Error("未获得该网站的临时访问权限。");
+    const item = await inspirationRepository.getSavedItem(request.itemId);
+    if (!item || normalizeUrl(request.url) !== item.canonicalUrl) throw new Error("收藏项与补全网址不一致。");
+
+    await inspirationRepository.markCaptureStarted(item.id, captureMethod);
+    started = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    let capture: PageCapture;
+    try {
+      const response = await fetch(request.url, { credentials: "omit", cache: "no-store", redirect: "follow", referrerPolicy: "no-referrer", signal: controller.signal });
+      if (!response.ok) throw new Error(`网站返回 HTTP ${response.status}，无法补全。`);
+      const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+      if (contentType && !contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) throw new Error("目标地址没有返回网页内容。");
+      capture = readRemoteMetadata(await readLimitedHtml(response), request.url, response.url || request.url);
+    } finally {
+      clearTimeout(timeout);
+    }
+    const completed = await inspirationRepository.completeCapture(item.id, capture, captureMethod);
+    void processAiQueue();
+    return { ok: true, created: false, itemId: completed.itemId, title: capture.title, completeness: capture.completeness };
+  } catch (error) {
+    if (started) await inspirationRepository.failCapture(request.itemId, readableError(error));
+    return { ok: false, itemId: request.itemId, error: readableError(error) };
+  } finally {
+    if (revokePermission) await browser.permissions.remove({ origins: [expectedPermission] }).catch(() => false);
+  }
+}
+
+async function captureRemoteBatch(request: Extract<ExtensionRequest, { type: "capture:remote-batch" }>) {
+  const permissions = [...new Set(request.items.map((item) => item.permissionPattern))];
+  try {
+    const results: CaptureResponse[] = [];
+    for (const item of request.items) {
+      results.push(await captureRemotePage({ type: "capture:remote", ...item }, false, "import"));
+    }
+    return results;
+  } finally {
+    if (permissions.length) await browser.permissions.remove({ origins: permissions }).catch(() => false);
+  }
+}
+
 export default defineBackground(() => {
   void Promise.all([
     hardenAiCredentialStorage(),
@@ -103,6 +183,13 @@ export default defineBackground(() => {
     )) {
       return Promise.reject(new Error("已拒绝来自非可信扩展页面的 AI 请求。"));
     }
+    if ((request.type === "capture:remote" || request.type === "capture:remote-batch") && !isTrustedAiMessageSender(
+      sender,
+      browser.runtime.id,
+      browser.runtime.getURL("/dashboard.html"),
+    )) {
+      return Promise.reject(new Error("已拒绝来自非可信扩展页面的远程补全请求。"));
+    }
     if (request.type === "dashboard:open") {
       const url = new URL(browser.runtime.getURL("/dashboard.html"));
       if (request.itemId) url.searchParams.set("item", request.itemId);
@@ -111,6 +198,8 @@ export default defineBackground(() => {
     if (request.type === "tags:list") return inspirationRepository.listTags();
     if (request.type === "capture:current") return addCurrentPage(request, sender.tab);
     if (request.type === "capture:retry") return retryCurrentPage(request, sender.tab);
+    if (request.type === "capture:remote") return captureRemotePage(request);
+    if (request.type === "capture:remote-batch") return captureRemoteBatch(request);
     if (request.type === "ai:config:get") return getAiSettings();
     if (request.type === "ai:config:save") {
       return (async () => {

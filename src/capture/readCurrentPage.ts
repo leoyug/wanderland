@@ -49,7 +49,7 @@ export function readCurrentPage(): PageCapture {
       : "partial";
 
   const canonicalUrl = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href);
-  const favicon = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel~="icon"]')?.href);
+  const favicon = absoluteUrl(document.querySelector<HTMLLinkElement>('link[rel~="icon"]')?.href) ?? absoluteUrl("/favicon.ico");
 
   return {
     title: metaContent('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title.trim(),

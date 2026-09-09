@@ -1,7 +1,8 @@
-import { RiAddLine, RiArrowLeftLine, RiArrowUpDownLine, RiCheckLine, RiErrorWarningLine, RiLayoutGridLine, RiListCheck3, RiPriceTag3Line, RiSearchLine, RiSettings3Line } from "@remixicon/react";
+import { RiAddLine, RiArrowLeftLine, RiArrowUpDownLine, RiCheckLine, RiErrorWarningLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine, RiSettings3Line } from "@remixicon/react";
 import { useState, type ReactNode } from "react";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
 import { InspirationCard } from "@/src/components/inspiration/InspirationCard";
+import { InspirationListItem } from "@/src/components/inspiration/InspirationListItem";
 import { SavedViewNavItem } from "@/src/components/layout/SavedViewNavItem";
 import { SidebarIcon } from "@/src/components/layout/SidebarIcon";
 import { SidebarNavItem } from "@/src/components/layout/SidebarNavItem";
@@ -37,8 +38,9 @@ const colors = [
 ];
 
 const layoutOptions = [
-  { value: "grid", label: "网格布局", icon: <RiLayoutGridLine size={15} aria-hidden="true" /> },
-  { value: "compact", label: "紧凑布局", icon: <RiListCheck3 size={15} aria-hidden="true" /> },
+  { value: "grid", label: "详情卡片", icon: <RiFunctionLine size={15} aria-hidden="true" /> },
+  { value: "compact", label: "紧凑卡片", icon: <RiListCheck2 size={15} aria-hidden="true" /> },
+  { value: "list", label: "详情列表", icon: <RiListCheck size={15} aria-hidden="true" /> },
 ] as const;
 
 function PreviewSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
@@ -142,10 +144,11 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
           </div>
         </PreviewSection>
 
-        <PreviewSection title="内容卡片" description="同一领域组件覆盖卡片与列表两种排列，并根据网站、文章和关注源调整内容结构。">
+        <PreviewSection title="内容卡片" description="卡片与紧凑卡片复用领域卡片，列表使用 Figma 列表组件，并根据网站、文章和关注源调整内容结构。">
           <div className="card-layout-specimens">
             <div><span>卡片排列</span><div className="card-preview-grid">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="cards" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
-            <div><span>列表排列</span><div className="list-preview-stack">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="list" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
+            <div><span>紧凑卡片</span><div className="compact-preview-grid">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="compact" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
+            <div><span>列表排列</span><div className="inspiration-list">{inspirationItems.slice(0, 3).map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
           </div>
         </PreviewSection>
 

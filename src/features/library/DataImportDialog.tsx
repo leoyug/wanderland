@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
+import { Switch } from "@/src/components/ui/Switch";
 
 type ImportMode = "urls" | "bookmarks";
 
 interface DataImportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (urls: string[]) => Promise<{ added: number; skipped: number }>;
+  onImport: (urls: string[], enrichMetadata: boolean) => Promise<{ added: number; skipped: number }>;
 }
 
 function extractUrls(value: string, mode: ImportMode) {
@@ -33,9 +34,11 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
   const [mode, setMode] = useState<ImportMode>("urls");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [enrichMetadata, setEnrichMetadata] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) { setMode("urls"); setValue(""); setError(""); }
+    if (isOpen) { setMode("urls"); setValue(""); setError(""); setEnrichMetadata(false); setIsSubmitting(false); }
   }, [isOpen]);
 
   const submit = async () => {
@@ -45,11 +48,14 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
       return;
     }
     let result: { added: number; skipped: number };
+    setIsSubmitting(true);
     try {
-      result = await onImport(urls);
+      result = await onImport(urls, enrichMetadata);
     } catch {
       setError("导入未能写入本地收藏库，请重试。");
       return;
+    } finally {
+      setIsSubmitting(false);
     }
     if (result.added === 0) {
       setError(`没有新增内容，${result.skipped} 个链接已存在。`);
@@ -71,9 +77,10 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
               </div>
               <Field label={mode === "urls" ? "链接列表" : "书签 HTML 内容"} placeholder={mode === "urls" ? "每行粘贴一个链接" : "粘贴浏览器导出的书签 HTML 内容"} value={value} onChange={setValue} multiline autoFocus />
               <p className="form-help">批量导入默认归入“网站”，已存在的规范化链接会自动跳过。</p>
+              <Switch isSelected={enrichMetadata} onChange={setEnrichMetadata} label="补全网站信息与封面" description="浏览器将一次确认本批次涉及的网站；只读取标题、描述、favicon 和公开 OG 封面，完成后立即撤销全部访问权限。" />
               {error ? <p className="form-error" role="alert">{error}</p> : null}
             </div>
-            <footer className="form-dialog-footer"><Button type="button" variant="ghost" onPress={close}>取消</Button><Button type="submit" variant="primary">开始导入</Button></footer>
+            <footer className="form-dialog-footer"><Button type="button" variant="ghost" isDisabled={isSubmitting} onPress={close}>取消</Button><Button type="submit" variant="primary" isDisabled={isSubmitting}>{isSubmitting ? "正在导入…" : "开始导入"}</Button></footer>
           </form>}
         </Dialog>
       </Modal>
