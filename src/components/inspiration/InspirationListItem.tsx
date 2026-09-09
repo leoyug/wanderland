@@ -1,4 +1,5 @@
 import { RiArrowRightUpLine, RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
+import type { MouseEventHandler } from "react";
 import { Badge } from "@/src/components/ui/Badge";
 import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
@@ -10,13 +11,21 @@ interface InspirationListItemProps {
   onOpen: () => void;
   onTagClick: (tag: string) => void;
   onToggleFavorite: () => void;
+  onContextMenu?: MouseEventHandler<HTMLElement>;
 }
 
-export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite }: InspirationListItemProps) {
+export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite, onContextMenu }: InspirationListItemProps) {
   const hasCoverImage = Boolean(item.cover.image || item.cover.blob);
 
   return (
-    <article className={cn("inspiration-list-item", `kind-${item.kind}`)} tabIndex={0} onClick={onOpen} onKeyDown={(event) => event.key === "Enter" && onOpen()}>
+    <article className={cn("inspiration-list-item", `kind-${item.kind}`)} tabIndex={0} onClick={onOpen} onContextMenu={onContextMenu} onKeyDown={(event) => {
+      if (event.key === "Enter") onOpen();
+      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: rect.left + 20, clientY: rect.top + 20 }));
+      }
+    }}>
       <div className="list-item-copy">
         <header className="list-item-source">
           <SiteIcon src={item.siteIcon} pageUrl={item.url} />

@@ -67,6 +67,14 @@ export class WanderlandDatabase extends Dexie {
         }));
       if (missingTasks.length) await tasks.bulkAdd(missingTasks);
     });
+
+    this.version(4).stores({
+      savedItems: "id,&[kind+canonicalUrl],canonicalUrl,kind,isFavorite,archivedAt,aiStatus,snapshotStatus,createdAt,updatedAt,*tagIds",
+      snapshots: "id,&itemId,capturedAt,completeness",
+      tags: "id,&normalizedName,usageCount,updatedAt",
+      savedViews: "id,isSystem,sortOrder,updatedAt,*tagIds",
+      tasks: "id,itemId,type,status,updatedAt,[status+updatedAt]",
+    });
   }
 }
 

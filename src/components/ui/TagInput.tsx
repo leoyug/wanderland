@@ -11,13 +11,14 @@ interface TagInputProps {
   onChange: (tags: string[]) => void;
   placement?: "auto" | "bottom";
   revealBelowOnOpen?: boolean;
+  autoFocus?: boolean;
 }
 
 const normalize = (value: string) => value.trim().replace(/^#/, "").normalize("NFKC");
 const revealSpaceProperty = "--tag-input-reveal-space";
 const detailRevealRoom = 200;
 
-export function TagInput({ label, tags, options, onChange, placement = "auto", revealBelowOnOpen = false }: TagInputProps) {
+export function TagInput({ label, tags, options, onChange, placement = "auto", revealBelowOnOpen = false, autoFocus = false }: TagInputProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -138,7 +139,7 @@ export function TagInput({ label, tags, options, onChange, placement = "auto", r
     <span className="tag-input-label">{label}</span>
     <div className="tag-input-control" onClick={() => inputRef.current?.focus()}>
       {tags.map((tag) => <button key={tag} type="button" className="tag-input-chip" onClick={(event) => { event.stopPropagation(); onChange(tags.filter((item) => item !== tag)); }}>#{tag}<RiCloseLine size={13} /></button>)}
-      <input ref={inputRef} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
+      <input ref={inputRef} autoFocus={autoFocus} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
     </div>
     {open && popoverStyle ? createPortal(<div ref={popoverRef} className="tag-input-popover" id="tag-input-listbox" role="listbox" style={popoverStyle} onMouseLeave={() => setHoveredIndex(-1)}>
       {query.trim() ? <>

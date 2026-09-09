@@ -53,6 +53,7 @@ export interface SavedItem {
   kind: SavedItemKind;
   tagIds: string[];
   isFavorite: boolean;
+  archivedAt?: number;
   snapshotId?: string;
   snapshotStatus: SnapshotStatus;
   aiStatus: AiStatus;

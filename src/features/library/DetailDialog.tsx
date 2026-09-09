@@ -20,11 +20,14 @@ interface DetailDialogProps {
   onDelete: () => Promise<void>;
   siteItemCount: number;
   onShowSite: () => void;
+  initialMode?: DetailMode;
+  initialEditing?: boolean;
+  initialEditFocus?: "tags";
 }
 
 type DetailMode = "details" | "snapshot" | "image";
 
-export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, siteItemCount, onShowSite }: DetailDialogProps) {
+export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, siteItemCount, onShowSite, initialMode = "details", initialEditing = false, initialEditFocus }: DetailDialogProps) {
   const snapshot = useLiveQuery(() => item ? inspirationRepository.getSnapshot(item.id) : undefined, [item?.id]);
   const tagOptions = useLiveQuery(() => inspirationRepository.listTags(), []) ?? [];
   const [mode, setMode] = useState<DetailMode>("details");
@@ -38,15 +41,15 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
 
   useEffect(() => {
     if (!item) return;
-    setMode("details");
-    setIsEditing(false);
+    setMode(initialMode);
+    setIsEditing(initialEditing);
     setTitle(item.title);
     setDescription(item.description);
     setTags(item.tags);
     setCoverBlob(undefined);
     setDeleteArmed(false);
     setAiRetrying(false);
-  }, [item]);
+  }, [initialEditing, initialMode, item]);
 
   useEffect(() => {
     if (!item || mode !== "details" || isEditing) return;
@@ -104,7 +107,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                   {isEditing ? <form className="detail-inline-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
                     <Field label="标题" value={title} onChange={setTitle} />
                     <Field label="描述" value={description} onChange={setDescription} multiline />
-                    <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen />
+                    <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
                     <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "选择后将锁定封面，不再被自动采集覆盖。"}</small></div><input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => setCoverBlob(event.target.files?.[0])} /></div>
                   </form> : <>
                     <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || "暂无描述"}</p></div></div>

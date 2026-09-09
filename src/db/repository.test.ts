@@ -103,6 +103,19 @@ describe("InspirationRepository", () => {
     reopened.close();
   });
 
+  it("persists archive state and allows restoring an item", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "website", url: "https://example.com/archive-me" });
+
+    await repository.setArchived(created.item.id, true);
+    expect((await repository.listLibraryItems())[0]?.archivedAt).toEqual(expect.any(Number));
+
+    await repository.setArchived(created.item.id, false);
+    expect((await repository.listLibraryItems())[0]?.archivedAt).toBeUndefined();
+    database.close();
+  });
+
   it("keeps existing records when upgrading the schema", async () => {
     const name = `wanderland-migration-${crypto.randomUUID()}`;
     databaseNames.push(name);

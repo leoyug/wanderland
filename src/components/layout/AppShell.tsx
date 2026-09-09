@@ -1,4 +1,4 @@
-import { RiAddLine, RiArticleLine, RiDownloadLine, RiPaletteLine, RiPriceTag3Line, RiSparkling2Line } from "@remixicon/react";
+import { RiAddLine, RiArchiveLine, RiArticleLine, RiDownloadLine, RiPaletteLine, RiPriceTag3Line, RiSparkling2Line } from "@remixicon/react";
 import type { ReactNode } from "react";
 import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { SavedViewNavItem } from "./SavedViewNavItem";
@@ -21,6 +21,7 @@ interface AppShellProps {
   onOpenImport: () => void;
   onOpenTags: () => void;
   onOpenAi: () => void;
+  onOpenArchive: () => void;
   children: ReactNode;
 }
 
@@ -31,14 +32,15 @@ const kindItems: Array<{ id: SavedItemKind; label: string; icon: string }> = [
   { id: "follow", label: "关注源", icon: iconPath("follow") },
 ];
 
-export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onSavedViewCreate, onOpenImport, onOpenTags, onOpenAi, children }: AppShellProps) {
+export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onSavedViewCreate, onOpenImport, onOpenTags, onOpenAi, onOpenArchive, children }: AppShellProps) {
+  const activeItems = items.filter((item) => !item.archivedAt);
   const countForScope = (scope: LibraryScope) => scope === "all"
-    ? items.length
+    ? activeItems.length
     : scope === "favorites"
-      ? items.filter((item) => item.isFavorite).length
+      ? activeItems.filter((item) => item.isFavorite).length
       : scope === "unprocessed"
-        ? items.filter((item) => !isSavedItemProcessed(item)).length
-        : items.filter((item) => item.kind === scope).length;
+        ? activeItems.filter((item) => !isSavedItemProcessed(item)).length
+        : activeItems.filter((item) => item.kind === scope).length;
   const renderScope = (scope: LibraryScope, label: string, icon: string) => <SidebarNavItem icon={<SidebarIcon src={icon} />} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} />;
 
   return (
@@ -59,7 +61,8 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
               <MenuItem id="import" onAction={onOpenImport}><RiDownloadLine size={16} aria-hidden="true" /><span>导入收藏</span></MenuItem>
               <MenuItem id="tags" onAction={onOpenTags}><RiPriceTag3Line size={16} aria-hidden="true" /><span>管理标签</span></MenuItem>
               <MenuItem id="ai" onAction={onOpenAi}><RiSparkling2Line size={16} aria-hidden="true" /><span>AI 助手</span></MenuItem>
-              <MenuItem id="appearance" className="menu-item-separated" isDisabled><RiPaletteLine size={16} aria-hidden="true" /><span>外观</span><small>后续</small></MenuItem>
+              <MenuItem id="archive" className="menu-item-separated" onAction={onOpenArchive}><RiArchiveLine size={16} aria-hidden="true" /><span>归档</span><small>{items.filter((item) => item.archivedAt).length || undefined}</small></MenuItem>
+              <MenuItem id="appearance" isDisabled><RiPaletteLine size={16} aria-hidden="true" /><span>外观</span><small>后续</small></MenuItem>
               <MenuItem id="digest" isDisabled><RiArticleLine size={16} aria-hidden="true" /><span>内容简报</span><small>后续</small></MenuItem>
             </MenuContent>
           </Menu>

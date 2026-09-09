@@ -10,6 +10,7 @@ const buttonStyles = cva("button", {
       secondary: "button-secondary",
       ghost: "button-ghost",
       danger: "button-danger",
+      dangerGhost: "button-danger-ghost",
     },
     size: { sm: "button-sm", md: "button-md", icon: "button-icon" },
   },

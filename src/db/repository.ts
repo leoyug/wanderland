@@ -587,6 +587,13 @@ export class InspirationRepository {
     });
   }
 
+  async setArchived(id: string, archived: boolean) {
+    await this.database.savedItems.update(id, {
+      archivedAt: archived ? Date.now() : undefined,
+      updatedAt: Date.now(),
+    });
+  }
+
   async createSavedView(input: { name: string; scope: SavedView["scope"]; tags: string[] }) {
     const normalizedTags = input.tags.map(normalizeTagName);
     const tags = normalizedTags.length

@@ -1,5 +1,5 @@
 import { RiArrowRightUpLine, RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type MouseEventHandler } from "react";
 import { Badge } from "@/src/components/ui/Badge";
 import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
@@ -13,11 +13,12 @@ interface InspirationCardProps {
   onOpen: () => void;
   onTagClick: (tag: string) => void;
   onToggleFavorite?: () => void;
+  onContextMenu?: MouseEventHandler<HTMLElement>;
   layout?: InspirationLayout;
   masonry?: boolean;
 }
 
-export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, layout = "cards", masonry = false }: InspirationCardProps) {
+export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, onContextMenu, layout = "cards", masonry = false }: InspirationCardProps) {
   const cardRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -36,7 +37,14 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, la
   const followContent = <div className="follow-profile"><SiteIcon src={item.siteIcon} pageUrl={item.url} variant="avatar" />{body}</div>;
 
   return (
-    <article ref={cardRef} className={cn("inspiration-card", `kind-${item.kind}`, layout === "compact" && "is-compact")} tabIndex={0} onClick={onOpen} onKeyDown={(event) => event.key === "Enter" && onOpen()}>
+    <article ref={cardRef} className={cn("inspiration-card", `kind-${item.kind}`, layout === "compact" && "is-compact")} tabIndex={0} onClick={onOpen} onContextMenu={onContextMenu} onKeyDown={(event) => {
+      if (event.key === "Enter") onOpen();
+      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: rect.left + 20, clientY: rect.top + 20 }));
+      }
+    }}>
       <header className="card-source-row">
         <div><SiteIcon src={item.siteIcon} pageUrl={item.url} /><a className="card-url-link" href={item.url} target="_blank" rel="noreferrer" title={item.sourceLabel} onClick={(event) => event.stopPropagation()}><span className="card-url-text">{item.sourceLabel}</span><RiArrowRightUpLine size={14} aria-hidden="true" /></a></div>
         <div className="source-actions">
