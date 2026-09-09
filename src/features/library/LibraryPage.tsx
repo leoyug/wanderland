@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input, SearchField } from "react-aria-components";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
+import type { ExtensionRequest } from "@/src/capture/types";
 import { InspirationCard, type InspirationLayout } from "@/src/components/inspiration/InspirationCard";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Button";
@@ -15,6 +16,7 @@ import { inspirationRepository } from "@/src/db/repository";
 import { isSavedItemProcessed, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { createLibrarySearchIndex } from "@/src/search/librarySearch";
 import { DataImportDialog } from "./DataImportDialog";
+import { AiSettingsDialog } from "./AiSettingsDialog";
 import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
 import { SettingsDialog } from "./SettingsDialog";
@@ -65,6 +67,7 @@ export function LibraryPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dataImportOpen, setDataImportOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
   const detailScrollRef = useRef(0);
@@ -168,12 +171,14 @@ export function LibraryPage() {
   async function addItem({ kind, url, description }: { kind: SavedItemKind; url: string; description: string }) {
     const result = await inspirationRepository.createSavedItem({ kind, url, description, captureMethod: "manual-url" });
     if (!result.created) return false;
+    void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     changeScope(kind);
     return true;
   }
 
   async function importItems(urls: string[]) {
     const result = await inspirationRepository.importWebsiteUrls(urls);
+    void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
       changeScope("website");
     }
@@ -213,7 +218,8 @@ export function LibraryPage() {
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
       <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} />
-      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} />
+      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)} />
+      <AiSettingsDialog isOpen={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
       <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
       <DataImportDialog isOpen={dataImportOpen} onClose={() => setDataImportOpen(false)} onImport={importItems} />
       <DetailDialog item={selectedItem} onClose={closeDetail} onNavigate={navigateDetail} onUpdate={(input) => inspirationRepository.updateSavedItem(selectedItem!.id, input)} onDelete={async () => { if (!selectedItem) return; await inspirationRepository.deleteSavedItem(selectedItem.id); closeDetail(); }} siteItemCount={selectedSiteItemCount} onShowSite={() => { if (!selectedItem) return; setQuery(selectedItem.siteHost); setActiveScope("all"); setSelectedTags([]); closeDetail(); }} />

@@ -7,6 +7,7 @@ export default defineConfig({
     name: "Wanderland",
     description: "在浏览器内添加、整理并重新发现网站、文章与关注源。",
     permissions: ["activeTab", "scripting", "storage"],
+    optional_host_permissions: ["https://*/*"],
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",

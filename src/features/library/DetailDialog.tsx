@@ -1,4 +1,4 @@
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiImageLine } from "@remixicon/react";
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiImageLine, RiRefreshLine, RiSparkling2Line } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
@@ -8,6 +8,7 @@ import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { TagInput } from "@/src/components/ui/TagInput";
 import { inspirationRepository } from "@/src/db/repository";
+import type { ExtensionRequest } from "@/src/capture/types";
 import type { LibraryItem, UpdateSavedItemInput } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 
@@ -33,6 +34,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   const [tags, setTags] = useState<string[]>([]);
   const [coverBlob, setCoverBlob] = useState<File>();
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [aiRetrying, setAiRetrying] = useState(false);
 
   useEffect(() => {
     if (!item) return;
@@ -43,6 +45,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setTags(item.tags);
     setCoverBlob(undefined);
     setDeleteArmed(false);
+    setAiRetrying(false);
   }, [item]);
 
   useEffect(() => {
@@ -59,6 +62,15 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   if (!item) return null;
   const kindLabel = { website: "网站", article: "文章", follow: "关注源" }[item.kind];
   const snapshotLabel = item.snapshotStatus === "complete" ? "完整" : item.snapshotStatus === "partial" ? "部分内容" : item.snapshotStatus === "pending" ? "等待采集" : "采集失败";
+  const aiLabel = item.aiStatus === "complete" ? "已完成" : item.aiStatus === "failed" ? "处理失败" : "等待处理";
+  const retryAi = async () => {
+    setAiRetrying(true);
+    try {
+      await browser.runtime.sendMessage({ type: "ai:retry", itemId: item.id } satisfies ExtensionRequest);
+    } finally {
+      setAiRetrying(false);
+    }
+  };
   const save = async () => {
     await onUpdate({ title, description, tags, coverBlob });
     setIsEditing(false);
@@ -100,6 +112,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                   </>}
                   {siteItemCount > 1 ? <Button variant="ghost" size="sm" onPress={onShowSite}>查看来自 {item.siteHost} 的 {siteItemCount} 个收藏项</Button> : null}
                   <div className="snapshot-row"><div><strong>正文快照</strong><span>{snapshotLabel} · 添加于 {item.savedAt}</span></div>{item.snapshotStatus === "failed" ? <a className="button button-secondary button-sm" href={item.url} target="_blank" rel="noreferrer" title="打开来源页面后，可通过扩展 Popup 重试采集">打开来源重试</a> : <Button variant="secondary" size="sm" isDisabled={!snapshot?.cleanHtml} onPress={() => setMode("snapshot")}>{item.snapshotStatus === "pending" ? "等待采集" : "阅读快照"}</Button>}</div>
+                  <div className="snapshot-row ai-status-row"><div><strong><RiSparkling2Line size={15} />AI 整理</strong><span>{item.aiError || `${aiLabel}。人工描述和标签始终优先。`}</span></div>{item.aiStatus === "failed" ? <Button variant="secondary" size="sm" isDisabled={aiRetrying} onPress={() => void retryAi()}><RiRefreshLine size={15} />{aiRetrying ? "重试中…" : "重试 AI"}</Button> : null}</div>
                   {!isEditing ? <div className="detail-actions"><Button variant="secondary" onPress={() => setIsEditing(true)}><RiEditLine size={16} />编辑</Button><Button variant="danger" onPress={() => deleteArmed ? void onDelete() : setDeleteArmed(true)}><RiDeleteBinLine size={16} />{deleteArmed ? "再次点击确认删除" : "删除"}</Button></div> : null}
                 </div>
               </>

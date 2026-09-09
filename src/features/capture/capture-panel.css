@@ -15,9 +15,9 @@
 .capture-page > span { color: var(--color-faint); font-size: var(--text-label); }
 .capture-page strong { overflow: hidden; color: var(--color-ink); font-size: var(--text-body); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .capture-page small { overflow: hidden; color: var(--color-muted); font-family: var(--font-metadata); font-size: var(--text-caption); text-overflow: ellipsis; white-space: nowrap; }
-.capture-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 3px; background: var(--color-surface-muted); border-radius: var(--radius-control); }
-.capture-kinds button { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; color: var(--color-muted); background: transparent; cursor: pointer; }
-.capture-kinds button:hover, .capture-kinds button:focus-visible { color: var(--color-ink); background: var(--color-surface-subtle); outline: none; }
+.capture-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; background: var(--color-surface-muted); border-radius: var(--radius-control); }
+.capture-kinds button { height: 42px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; padding: 0; color: var(--color-muted); background: transparent; appearance: none; cursor: pointer; }
+.capture-kinds button:hover, .capture-kinds button:focus-visible { color: var(--color-ink); background: var(--color-surface-subtle); box-shadow: var(--shadow-hairline); outline: none; }
 .capture-kinds button[aria-pressed="true"] { color: var(--color-brand); background: var(--color-surface); box-shadow: var(--shadow-hairline); }
 .capture-panel .field label, .capture-panel .tag-input-label { color: var(--color-text); font-size: var(--text-control); font-weight: 400; }
 .capture-description textarea { min-height: 78px; }

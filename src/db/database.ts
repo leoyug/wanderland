@@ -40,6 +40,33 @@ export class WanderlandDatabase extends Dexie {
         view.updatedAt ??= view.createdAt;
       });
     });
+
+    this.version(3).stores({
+      savedItems: "id,&[kind+canonicalUrl],canonicalUrl,kind,isFavorite,aiStatus,snapshotStatus,createdAt,updatedAt,*tagIds",
+      snapshots: "id,&itemId,capturedAt,completeness",
+      tags: "id,&normalizedName,usageCount,updatedAt",
+      savedViews: "id,isSystem,sortOrder,updatedAt,*tagIds",
+      tasks: "id,itemId,type,status,updatedAt,[status+updatedAt]",
+    }).upgrade(async (transaction) => {
+      const now = Date.now();
+      const savedItems = await transaction.table<SavedItem, string>("savedItems").toArray();
+      const tasks = transaction.table<PersistentTask, string>("tasks");
+      const existingAiItemIds = new Set(
+        (await tasks.where("type").equals("ai").toArray()).map((task) => task.itemId),
+      );
+      const missingTasks = savedItems
+        .filter((item) => item.aiStatus !== "complete" && !existingAiItemIds.has(item.id))
+        .map((item) => ({
+          id: `task-ai-migration-${item.id}`,
+          itemId: item.id,
+          type: "ai" as const,
+          status: "pending" as const,
+          attempts: 0,
+          createdAt: now,
+          updatedAt: now,
+        }));
+      if (missingTasks.length) await tasks.bulkAdd(missingTasks);
+    });
   }
 }
 

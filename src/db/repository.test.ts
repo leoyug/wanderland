@@ -45,7 +45,7 @@ describe("InspirationRepository", () => {
     expect(duplicate).toEqual({ created: false, item: first.item });
     expect(otherKind.created).toBe(true);
     expect(await database.savedItems.count()).toBe(2);
-    expect(await database.tasks.count()).toBe(2);
+    expect(await database.tasks.count()).toBe(4);
     database.close();
   });
 
@@ -133,7 +133,7 @@ describe("InspirationRepository", () => {
 
     const item = await database.savedItems.get(created.item.id);
     const snapshot = await database.snapshots.where("itemId").equals(created.item.id).first();
-    const task = await database.tasks.where("itemId").equals(created.item.id).first();
+    const task = await database.tasks.where("itemId").equals(created.item.id).and((candidate) => candidate.type === "capture").first();
     expect(item).toMatchObject({
       title: "A captured article",
       description: "My own note",
@@ -188,7 +188,7 @@ describe("InspirationRepository", () => {
     await repository.recoverInterruptedCaptureTasks();
 
     expect(await database.savedItems.get(created.item.id)).toMatchObject({ snapshotStatus: "failed" });
-    expect(await database.tasks.where("itemId").equals(created.item.id).first()).toMatchObject({
+    expect(await database.tasks.where("itemId").equals(created.item.id).and((candidate) => candidate.type === "capture").first()).toMatchObject({
       status: "failed",
       attempts: 1,
       lastError: "浏览器后台在采集期间中断，请在来源页面重试。",
@@ -247,6 +247,56 @@ describe("InspirationRepository", () => {
     expect(await database.savedItems.count()).toBe(0);
     expect(await database.snapshots.count()).toBe(0);
     expect(await database.tasks.count()).toBe(0);
+    database.close();
+  });
+
+  it("applies validated AI output without replacing page descriptions", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "article", url: "https://example.com/article" });
+    await repository.completeCapture(created.item.id, createCapture({ description: "Page description" }));
+    const task = await database.tasks.where("itemId").equals(created.item.id).and((candidate) => candidate.type === "ai").first();
+
+    await repository.markAiStarted(task!.id);
+    await repository.completeAiTask(task!.id, { description: "AI description", tags: ["设计", "前端", "无障碍"] });
+
+    const item = await database.savedItems.get(created.item.id);
+    expect(item).toMatchObject({ description: "Page description", descriptionSource: "page", aiStatus: "complete" });
+    expect((await repository.listLibraryItems())[0]?.tags).toEqual(expect.arrayContaining(["设计", "前端", "无障碍"]));
+    expect(await database.tasks.get(task!.id)).toMatchObject({ status: "complete", attempts: 1 });
+    database.close();
+  });
+
+  it("never changes tags after the user has edited them", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "website", url: "https://example.com", description: "User description", tags: ["人工标签"] });
+    const task = await database.tasks.where("itemId").equals(created.item.id).and((candidate) => candidate.type === "ai").first();
+
+    await repository.markAiStarted(task!.id);
+    await repository.completeAiTask(task!.id, { description: "AI description", tags: ["设计", "前端", "工具"] });
+
+    const item = await database.savedItems.get(created.item.id);
+    expect(item).toMatchObject({ description: "User description", descriptionSource: "user", aiStatus: "complete" });
+    expect((await repository.listLibraryItems())[0]?.tags).toEqual(["人工标签"]);
+    database.close();
+  });
+
+  it("persists AI failure details and makes interrupted work retryable", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "website", url: "https://example.com" });
+    const task = await database.tasks.where("itemId").equals(created.item.id).and((candidate) => candidate.type === "ai").first();
+    await repository.markAiStarted(task!.id);
+
+    await repository.recoverInterruptedAiTasks();
+
+    expect(await database.savedItems.get(created.item.id)).toMatchObject({ aiStatus: "failed" });
+    expect(await database.tasks.get(task!.id)).toMatchObject({
+      status: "failed",
+      attempts: 1,
+      lastError: "浏览器后台在 AI 处理期间中断，可重试。",
+    });
     database.close();
   });
 });

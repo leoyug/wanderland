@@ -1,6 +1,7 @@
 import Dexie, { type Transaction } from "dexie";
 import { createFallbackTitle, formatUrlIdentity, normalizeUrl } from "@/src/capture/normalizeUrl";
 import type { PageCapture } from "@/src/capture/types";
+import type { AiAnalysisInput, AiTaskSummary, PageAnalysis } from "@/src/ai/types";
 import type {
   CreateSavedItemInput,
   LibraryItem,
@@ -77,13 +78,15 @@ export class InspirationRepository {
   }
 
   async listLibraryItems(): Promise<LibraryItem[]> {
-    const [items, tags, snapshots] = await Promise.all([
+    const [items, tags, snapshots, tasks] = await Promise.all([
       this.database.savedItems.orderBy("createdAt").reverse().toArray(),
       this.database.tags.toArray(),
       this.database.snapshots.toArray(),
+      this.database.tasks.where("type").equals("ai").toArray(),
     ]);
     const tagsById = new Map(tags.map((tag) => [tag.id, tag.name]));
     const snapshotsByItem = new Map(snapshots.map((snapshot) => [snapshot.itemId, snapshot]));
+    const aiTasksByItem = new Map(tasks.map((task) => [task.itemId, task]));
     return items.map((item) => ({
       ...item,
       title: !item.title.trim() || item.title === item.siteHost ? createFallbackTitle(item.canonicalUrl) : item.title,
@@ -92,6 +95,8 @@ export class InspirationRepository {
       tags: item.tagIds.flatMap((id) => tagsById.get(id) ?? []),
       savedAt: formatSavedAt(item.createdAt),
       snapshotText: snapshotsByItem.get(item.id)?.cleanText ?? "",
+      aiError: aiTasksByItem.get(item.id)?.lastError,
+      aiAttempts: aiTasksByItem.get(item.id)?.attempts,
     }));
   }
 
@@ -123,6 +128,7 @@ export class InspirationRepository {
         description: input.description.trim(),
         descriptionSource: input.descriptionEdited === false ? item.descriptionSource : input.description.trim() ? "user" : undefined,
         tagIds: nextTagIds,
+        tagsEditedAt: now,
         cover: input.coverBlob ? { ...item.cover, image: undefined, blob: input.coverBlob, isUserSelected: true } : item.cover,
         updatedAt: now,
       });
@@ -230,7 +236,7 @@ export class InspirationRepository {
           createdAt: now,
           updatedAt: now,
         };
-        const task: PersistentTask = {
+        const captureTask: PersistentTask = {
           id: createId("task"),
           itemId: item.id,
           type: "capture",
@@ -240,8 +246,17 @@ export class InspirationRepository {
           createdAt: now,
           updatedAt: now,
         };
+        const aiTask: PersistentTask = {
+          id: createId("task"),
+          itemId: item.id,
+          type: "ai",
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+          updatedAt: now,
+        };
         await this.database.savedItems.add(item);
-        await this.database.tasks.add(task);
+        await this.database.tasks.bulkAdd([captureTask, aiTask]);
         return { created: true, item };
       });
       if (!input.description?.trim() && !input.tags?.length) return result;
@@ -399,6 +414,154 @@ export class InspirationRepository {
         changes: { snapshotStatus: "failed", updatedAt: now },
       })));
     });
+  }
+
+  async listRunnableAiTasks(now = Date.now()) {
+    return (await this.database.tasks.where("type").equals("ai").toArray())
+      .filter((task) => (
+        (task.status === "pending" || task.status === "failed")
+        && task.attempts < 3
+        && (task.nextAttemptAt ?? 0) <= now
+      ))
+      .sort((a, b) => a.updatedAt - b.updatedAt);
+  }
+
+  async getAiAnalysisInput(itemId: string): Promise<AiAnalysisInput | undefined> {
+    const [item, snapshot, tags] = await Promise.all([
+      this.database.savedItems.get(itemId),
+      this.database.snapshots.where("itemId").equals(itemId).first(),
+      this.database.tags.toArray(),
+    ]);
+    if (!item) return undefined;
+    return {
+      url: item.canonicalUrl,
+      kind: item.kind,
+      title: item.title,
+      currentDescription: item.description,
+      pageExcerpt: snapshot?.excerpt ?? "",
+      pageText: snapshot?.cleanText ?? "",
+      existingTags: tags.map(({ name, aliases }) => ({ name, aliases })),
+    };
+  }
+
+  async isAiTaskReady(itemId: string) {
+    const captureTask = await this.database.tasks.where("itemId").equals(itemId).and((task) => task.type === "capture").first();
+    return captureTask?.captureMethod !== "active-tab" || captureTask.status === "complete" || captureTask.status === "failed";
+  }
+
+  async markAiStarted(taskId: string) {
+    const task = await this.database.tasks.get(taskId);
+    if (!task || task.type !== "ai") throw new Error("AI 任务不存在");
+    const now = Date.now();
+    await this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+      await this.database.tasks.update(task.id, {
+        status: "running",
+        attempts: task.attempts + 1,
+        lastError: undefined,
+        nextAttemptAt: undefined,
+        updatedAt: now,
+      });
+      await this.database.savedItems.update(task.itemId, { aiStatus: "pending", updatedAt: now });
+    });
+  }
+
+  async completeAiTask(taskId: string, analysis: PageAnalysis) {
+    await this.database.transaction("rw", this.database.tasks, this.database.savedItems, this.database.tags, async () => {
+      const task = await this.database.tasks.get(taskId);
+      if (!task || task.type !== "ai") throw new Error("AI 任务不存在");
+      const item = await this.database.savedItems.get(task.itemId);
+      if (!item) {
+        await this.database.tasks.delete(task.id);
+        return;
+      }
+
+      const now = Date.now();
+      const nextDescription = resolveDescription(item, { description: analysis.description, source: "ai" });
+      let nextTagIds = item.tagIds;
+      if (!item.tagsEditedAt) {
+        const allTags = await this.database.tags.toArray();
+        const tagByIdentity = new Map<string, Tag>();
+        for (const tag of allTags) {
+          tagByIdentity.set(tag.normalizedName, tag);
+          tag.aliases.forEach((alias) => tagByIdentity.set(normalizeTagName(alias), tag));
+        }
+        const generatedNames = [...new Set(analysis.tags.map(normalizeTagName).filter(Boolean))].slice(0, 5);
+        const createdTags: Tag[] = generatedNames.filter((name) => !tagByIdentity.has(name)).map((name) => ({
+          id: createId("tag"), name, normalizedName: name, aliases: [], usageCount: 0, createdAt: now, updatedAt: now,
+        }));
+        if (createdTags.length) await this.database.tags.bulkAdd(createdTags);
+        createdTags.forEach((tag) => tagByIdentity.set(tag.normalizedName, tag));
+        nextTagIds = [...new Set([...item.tagIds, ...generatedNames.flatMap((name) => tagByIdentity.get(name)?.id ?? [])])];
+      }
+
+      await this.database.savedItems.update(item.id, {
+        description: nextDescription.description,
+        descriptionSource: nextDescription.descriptionSource,
+        tagIds: nextTagIds,
+        aiStatus: "complete",
+        updatedAt: now,
+      });
+      await this.database.tasks.update(task.id, {
+        status: "complete",
+        lastError: undefined,
+        nextAttemptAt: undefined,
+        updatedAt: now,
+      });
+      for (const tagId of new Set([...item.tagIds, ...nextTagIds])) {
+        const usageCount = await this.database.savedItems.where("tagIds").equals(tagId).count();
+        await this.database.tags.update(tagId, { usageCount, updatedAt: now });
+      }
+    });
+  }
+
+  async failAiTask(taskId: string, reason: string, retryable: boolean) {
+    const task = await this.database.tasks.get(taskId);
+    if (!task || task.type !== "ai") return;
+    const now = Date.now();
+    const attempts = Math.max(1, task.attempts);
+    await this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+      await this.database.tasks.update(task.id, {
+        status: "failed",
+        lastError: reason,
+        nextAttemptAt: retryable && attempts < 3 ? now + Math.min(60_000 * 2 ** (attempts - 1), 15 * 60_000) : undefined,
+        updatedAt: now,
+      });
+      await this.database.savedItems.update(task.itemId, { aiStatus: "failed", updatedAt: now });
+    });
+  }
+
+  async retryAiTask(itemId: string) {
+    const now = Date.now();
+    await this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+      const item = await this.database.savedItems.get(itemId);
+      if (!item) throw new Error("收藏项不存在");
+      const task = await this.database.tasks.where("itemId").equals(itemId).and((candidate) => candidate.type === "ai").first();
+      if (task) {
+        await this.database.tasks.update(task.id, { status: "pending", attempts: 0, lastError: undefined, nextAttemptAt: undefined, updatedAt: now });
+      } else {
+        await this.database.tasks.add({ id: createId("task"), itemId, type: "ai", status: "pending", attempts: 0, createdAt: now, updatedAt: now });
+      }
+      await this.database.savedItems.update(itemId, { aiStatus: "pending", updatedAt: now });
+    });
+  }
+
+  async retryFailedAiTasks() {
+    const failed = await this.database.tasks.where("type").equals("ai").and((task) => task.status === "failed").toArray();
+    await Promise.all(failed.map((task) => this.retryAiTask(task.itemId)));
+    return failed.length;
+  }
+
+  async recoverInterruptedAiTasks() {
+    const running = await this.database.tasks.where("type").equals("ai").and((task) => task.status === "running").toArray();
+    for (const task of running) await this.failAiTask(task.id, "浏览器后台在 AI 处理期间中断，可重试。", true);
+  }
+
+  async getAiTaskSummary(): Promise<AiTaskSummary> {
+    const tasks = await this.database.tasks.where("type").equals("ai").toArray();
+    return tasks.reduce<AiTaskSummary>((summary, task) => {
+      summary[task.status] += 1;
+      return summary;
+    }, { pending: 0, running: 0, failed: 0, complete: 0 });
   }
 
   async importWebsiteUrls(urls: string[]): Promise<ImportSavedItemsResult> {

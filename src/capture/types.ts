@@ -1,4 +1,5 @@
 import type { SavedItemKind, SnapshotCompleteness } from "@/src/domain/inspiration";
+import type { AiSettings } from "@/src/ai/types";
 
 export interface PageCapture {
   url: string;
@@ -19,7 +20,13 @@ export type ExtensionRequest =
   | { type: "dashboard:open"; itemId?: string }
   | { type: "tags:list" }
   | { type: "capture:current"; kind: SavedItemKind; description: string; tags: string[] }
-  | { type: "capture:retry"; itemId: string };
+  | { type: "capture:retry"; itemId: string }
+  | { type: "ai:config:get" }
+  | { type: "ai:config:save"; settings: AiSettings & { apiKey?: string } }
+  | { type: "ai:process" }
+  | { type: "ai:retry"; itemId: string }
+  | { type: "ai:retry-failed" }
+  | { type: "ai:tasks:summary" };
 
 export type CaptureResponse =
   | { ok: true; created: boolean; itemId: string; title: string; completeness: SnapshotCompleteness }

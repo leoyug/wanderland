@@ -56,6 +56,8 @@ export interface SavedItem {
   snapshotId?: string;
   snapshotStatus: SnapshotStatus;
   aiStatus: AiStatus;
+  /** Once present, later AI runs must not add, remove, or replace tags. */
+  tagsEditedAt?: number;
   createdAt: number;
   updatedAt: number;
   lastOpenedAt?: number;
@@ -117,6 +119,8 @@ export interface LibraryItem extends SavedItem {
   tags: string[];
   savedAt: string;
   snapshotText: string;
+  aiError?: string;
+  aiAttempts?: number;
 }
 
 export interface UpdateSavedItemInput {

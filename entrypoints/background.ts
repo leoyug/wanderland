@@ -1,4 +1,7 @@
 import { normalizeUrl } from "@/src/capture/normalizeUrl";
+import { endpointPermissionPattern, getAiSettings, hardenAiCredentialStorage, saveAiSettings } from "@/src/ai/config";
+import { isTrustedAiMessageSender } from "@/src/ai/messageSecurity";
+import { processAiQueue } from "@/src/ai/runner";
 import type { CaptureResponse, ExtensionRequest, PageCapture } from "@/src/capture/types";
 import { inspirationRepository } from "@/src/db/repository";
 
@@ -28,7 +31,9 @@ async function captureIntoItem(itemId: string, tab: Awaited<ReturnType<typeof ge
   await inspirationRepository.markCaptureStarted(itemId);
   try {
     const capture = await readTab(tab.id!);
-    return { capture, ...(await inspirationRepository.completeCapture(itemId, capture)) };
+    const completed = { capture, ...(await inspirationRepository.completeCapture(itemId, capture)) };
+    void processAiQueue();
+    return completed;
   } catch (error) {
     await inspirationRepository.failCapture(itemId, readableError(error));
     throw error;
@@ -83,11 +88,20 @@ async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capt
 
 export default defineBackground(() => {
   void Promise.all([
+    hardenAiCredentialStorage(),
     inspirationRepository.initialize(),
     inspirationRepository.recoverInterruptedCaptureTasks(),
-  ]).catch((error) => console.error("Wanderland 初始化失败", error));
+    inspirationRepository.recoverInterruptedAiTasks(),
+  ]).then(() => processAiQueue()).catch((error) => console.error("Wanderland 初始化失败", error));
 
   browser.runtime.onMessage.addListener((request: ExtensionRequest, sender) => {
+    if (request.type.startsWith("ai:") && !isTrustedAiMessageSender(
+      sender,
+      browser.runtime.id,
+      browser.runtime.getURL("/dashboard.html"),
+    )) {
+      return Promise.reject(new Error("已拒绝来自非可信扩展页面的 AI 请求。"));
+    }
     if (request.type === "dashboard:open") {
       const url = new URL(browser.runtime.getURL("/dashboard.html"));
       if (request.itemId) url.searchParams.set("item", request.itemId);
@@ -96,6 +110,32 @@ export default defineBackground(() => {
     if (request.type === "tags:list") return inspirationRepository.listTags();
     if (request.type === "capture:current") return addCurrentPage(request, sender.tab);
     if (request.type === "capture:retry") return retryCurrentPage(request, sender.tab);
+    if (request.type === "ai:config:get") return getAiSettings();
+    if (request.type === "ai:config:save") {
+      return (async () => {
+        const previous = await getAiSettings();
+        const settings = await saveAiSettings(request.settings);
+        try {
+          const previousPermission = endpointPermissionPattern(previous.endpoint);
+          const nextPermission = endpointPermissionPattern(settings.endpoint);
+          if (!settings.enabled || previousPermission !== nextPermission) {
+            await browser.permissions.remove({ origins: [previousPermission] });
+          }
+        } catch {
+          // Legacy insecure endpoints are intentionally not retained or requested.
+        }
+        if (settings.enabled) void processAiQueue();
+        return settings;
+      })();
+    }
+    if (request.type === "ai:process") return processAiQueue().then(() => inspirationRepository.getAiTaskSummary());
+    if (request.type === "ai:retry") {
+      return inspirationRepository.retryAiTask(request.itemId).then(() => processAiQueue()).then(() => inspirationRepository.getAiTaskSummary());
+    }
+    if (request.type === "ai:retry-failed") {
+      return inspirationRepository.retryFailedAiTasks().then(() => processAiQueue()).then(() => inspirationRepository.getAiTaskSummary());
+    }
+    if (request.type === "ai:tasks:summary") return inspirationRepository.getAiTaskSummary();
   });
 
   browser.action.onClicked.addListener(async (tab) => {
