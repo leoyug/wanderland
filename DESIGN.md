@@ -19,9 +19,9 @@ colors:
   card-border: "color(display-p3 0.89412 0.89412 0.89412)"
   media-border: "color(display-p3 0.9451 0.9451 0.9451)"
   shortcut-surface: "color(display-p3 0.94902 0.94902 0.96689)"
-  scrollbar-thumb: "color(display-p3 0.71291 0.69112 0.66215)"
-  scrollbar-thumb-hover: "color(display-p3 0.56457 0.54590 0.52057)"
-  scrollbar-thumb-active: "color(display-p3 0.43922 0.43922 0.43922)"
+  scrollbar-thumb: "color(display-p3 0.87059 0.87059 0.87059)"
+  scrollbar-thumb-hover: "color(display-p3 0.82353 0.82353 0.82353)"
+  scrollbar-thumb-active: "color(display-p3 0.78039 0.78039 0.78039)"
   brand: "color(display-p3 1 0.4627 0.0549)"
   brand-hover: "color(display-p3 0.91 0.42106 0.04996)"
   accent: "color(display-p3 1 0.4627 0.0549)"
@@ -54,9 +54,9 @@ srgbFallbacks:
   card-border: "#e4e4e4"
   media-border: "#f1f1f1"
   shortcut-surface: "#f2f2f7"
-  scrollbar-thumb: "#b7b0a8"
-  scrollbar-thumb-hover: "#918b84"
-  scrollbar-thumb-active: "#707070"
+  scrollbar-thumb: "#dedede"
+  scrollbar-thumb-hover: "#d2d2d2"
+  scrollbar-thumb-active: "#c7c7c7"
   brand: "#ff760e"
   brand-hover: "#e96a08"
   accent-primary-bg: "rgb(255 118 14 / 10%)"
@@ -112,7 +112,7 @@ rounded:
 - **数值展示**：设计系统预览中的色块仍使用 P3 token 渲染，但面向设计核对的色值统一显示为六位大写十六进制参考值，例如 `#FF760E`；不直接展示 P3 浮点分量。
 - **品牌层**：`brand / accent` 使用 P3 品牌橙，`brand-hover` 为较深状态色；`color/accent/primary-bg`（代码 token 为 `--color-accent-primary-bg`）是品牌主色 10% 透明度，用于品牌控件悬停背景；`accent-soft` 是独立的浅色选中表面，两者不互为别名。
 - **表面层**：`canvas` 是页面基底；`surface` 是卡片和侧栏；`surface-secondary` 是标签等次级内容区，sRGB 核对值为 `#F6F5F4`；`surface-subtle` 用于导航选项、普通图标按钮和“取消”等弱操作文字按钮的统一悬停背景；`surface-muted` 是布局切换控件。
-- **滚动条**：使用独立的 `scrollbar-thumb` 语义色，默认、悬停和拖动状态逐级加深；轨道保持透明。滚动条宽 `12px`，通过 `2px` 透明内边缘形成清晰但不过重的 `8px` 可见滑块。
+- **滚动条**：使用独立的 `scrollbar-thumb` 语义色；默认态采用更浅的中性色，悬停时微微加深，拖动时才使用当前较深的 `scrollbar-thumb-active` 色。轨道保持透明。滚动条宽 `12px`，通过 `2px` 透明内边缘形成清晰但不过重的 `8px` 可见滑块。
 - **文字层**：`ink` 用于标题；`text` 用于正文；`text-muted` 用于辅助说明；`text-faint` 用于导航分组、占位文字和时间信息；`copyright` 只用于侧栏版权信息。
 - **语义层**：成功、提示、等待、危险都使用 P3 token，并配套浅色背景 token；危险色使用鲜明的现代红，sRGB 核对值为 `#FF5252`。危险图标按钮默认保持透明，悬停时统一使用 `danger-bg`（危险红 8%）背景。禁止在组件中临时生成含义不清的状态色。
 - 新增或修改颜色必须先确定 P3 值，再提供 sRGB 兼容回退；组件只引用语义 token，不直接写颜色值或把 P3 重新转换成 sRGB 作为主值。
@@ -120,7 +120,7 @@ rounded:
 ## 布局
 
 - 桌面侧栏固定宽度 `220px`，白底，右侧使用 `border-subtle #eee9e3` 细分隔线。
-- 主内容左右内边距 `16px`；顶部导航高 `76px`，筛选栏从 `102px` 开始。
+- 主内容左右内边距 `12px`；顶部导航高 `76px`，筛选栏从 `102px` 开始。
 - 搜索框宽 `560px`、高 `52px`、胶囊圆角，白底，不再显示副标题。
 - 工具栏高 `52px`。分段控件和视图切换使用 `surface-muted #e8e3db` 底色，当前项为白色。
 - 工作台工具栏内的筛选、排序和筛选结果操作按钮在悬停时统一使用轻量 `toolbar-control-hover` 动效：控件位置保持不变，保留细描边并以平滑减速曲线过渡到单层、低透明度、紧凑扩散范围的柔和下投影。排列方式的 Segmented Control 不使用该阴影：已选项悬停时视觉保持不变，未选项悬停时只将图标由 `text-muted` 加深为 `ink`。该状态只作用于 `.collection-toolbar`，不得复用或覆盖卡片的 `card-lift` 阴影。筛选容器允许换行且保持 `overflow: visible`，禁止裁切控件阴影。
@@ -169,6 +169,7 @@ rounded:
 - 图标按钮必须有可访问名称，卡片支持键盘聚焦和 Enter 打开。
 - 二元启用状态统一复用从 Intent UI registry 复制并定制的共享 `Switch`，不得用 checkbox 或 radio 的外观代替；互斥的多项选择统一复用 Intent UI `RadioGroup` 结构。两者必须覆盖选中、未选、键盘焦点与禁用状态，并只引用语义 token。
 - 可滚动的表单与设置 Modal 统一冻结顶部标题栏；存在提交操作时同时冻结底部按钮栏，只有中间正文滚动。标题、说明、关闭按钮、取消与主操作始终可见；固定栏使用 `surface` 实色表面和分隔线，避免滚动内容从其下方透出。没有提交操作的设置列表和标签管理不添加空底栏。
+- 设置中的“备份与恢复”使用独立任务分区，清楚区分下载备份与合并恢复。选择文件后先显示项目、快照和标签数量，再由用户明确确认写入；恢复不删除或覆盖现有收藏，结果原位反馈，并提示备份包含私人内容但不包含 API Key。
 - AI Provider 设置在 API Key 后提供“测试连接”次级操作。测试使用当前表单中的 Provider、Endpoint、Model 与新输入或已保存的 Key 发出最小请求；成功和失败均原位反馈，测试不保存表单、不写入 Key，也不触发收藏项整理任务。
 - 液态形变只用于添加入口，使用 `liquid-gooey` 保持真实 DOM 按钮；三个操作在收起时不得进入 Tab 顺序。键盘可用 Enter/Space 展开、Escape 收起，`prefers-reduced-motion` 下取消弹性位移。
 - 标签统一通过共享 Badge 渲染并显示 `#` 前缀。强调标签使用 `tag-text` 常规字重文字与 `tag-surface` 背景；卡片和列表中的内容标签使用 `neutral` variant。侧栏选中态继续复用强调标签的 P3 配色。

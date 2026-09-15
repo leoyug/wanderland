@@ -1,11 +1,9 @@
-import { RiCloseLine, RiFileTextLine, RiLinksLine } from "@remixicon/react";
+import { RiCloseLine, RiFileMarkedLine } from "@remixicon/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 import { Switch } from "@/src/components/ui/Switch";
-
-type ImportMode = "urls" | "bookmarks";
 
 interface DataImportDialogProps {
   isOpen: boolean;
@@ -13,10 +11,8 @@ interface DataImportDialogProps {
   onImport: (urls: string[], enrichMetadata: boolean) => Promise<{ added: number; skipped: number }>;
 }
 
-function extractUrls(value: string, mode: ImportMode) {
-  const candidates = mode === "bookmarks"
-    ? [...new DOMParser().parseFromString(value, "text/html").querySelectorAll<HTMLAnchorElement>("a[href]")].map((anchor) => anchor.href)
-    : value.split(/[\n,\s]+/);
+function extractBookmarkUrls(value: string) {
+  const candidates = [...new DOMParser().parseFromString(value, "text/html").querySelectorAll<HTMLAnchorElement>("a[href]")].map((anchor) => anchor.href);
 
   const unique = new Set<string>();
   for (const candidate of candidates) {
@@ -31,20 +27,19 @@ function extractUrls(value: string, mode: ImportMode) {
 }
 
 export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialogProps) {
-  const [mode, setMode] = useState<ImportMode>("urls");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [enrichMetadata, setEnrichMetadata] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) { setMode("urls"); setValue(""); setError(""); setEnrichMetadata(false); setIsSubmitting(false); }
+    if (isOpen) { setValue(""); setError(""); setEnrichMetadata(false); setIsSubmitting(false); }
   }, [isOpen]);
 
   const submit = async () => {
-    const urls = extractUrls(value, mode);
+    const urls = extractBookmarkUrls(value);
     if (urls.length === 0) {
-      setError(mode === "urls" ? "没有找到有效的 http:// 或 https:// 链接" : "书签 HTML 中没有找到可导入的链接");
+      setError("书签 HTML 中没有找到可导入的链接");
       return;
     }
     let result: { added: number; skipped: number };
@@ -69,14 +64,10 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
       <Modal className="form-modal import-modal">
         <Dialog className="form-dialog">
           {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <header className="form-dialog-header"><div className="form-dialog-icon"><RiLinksLine size={20} /></div><div><DialogTitle>导入收藏项</DialogTitle><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header"><div className="form-dialog-icon"><RiFileMarkedLine size={20} /></div><div><DialogTitle>导入浏览器书签</DialogTitle><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
-              <div className="import-mode" aria-label="导入方式">
-                <button type="button" aria-pressed={mode === "urls"} onClick={() => { setMode("urls"); setError(""); }}><RiLinksLine size={15} />批量链接</button>
-                <button type="button" aria-pressed={mode === "bookmarks"} onClick={() => { setMode("bookmarks"); setError(""); }}><RiFileTextLine size={15} />书签 HTML</button>
-              </div>
-              <Field label={mode === "urls" ? "链接列表" : "书签 HTML 内容"} placeholder={mode === "urls" ? "每行粘贴一个链接" : "粘贴浏览器导出的书签 HTML 内容"} value={value} onChange={setValue} multiline autoFocus />
-              <p className="form-help">批量导入默认归入“网站”，已存在的规范化链接会自动跳过。</p>
+              <Field className="batch-url-field" label="书签 HTML 内容" placeholder="粘贴浏览器导出的书签 HTML 内容" value={value} onChange={setValue} multiline rows={8} autoFocus />
+              <p className="form-help">书签会作为“网站”保存，已存在的规范化链接会自动跳过。</p>
               <Switch isSelected={enrichMetadata} onChange={setEnrichMetadata} label="补全网站信息与封面" description="浏览器将一次确认本批次涉及的网站；只读取标题、描述、favicon 和公开 OG 封面，完成后立即撤销全部访问权限。" />
               {error ? <p className="form-error" role="alert">{error}</p> : null}
             </div>

@@ -70,6 +70,16 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("imports pasted URLs using the selected content type", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+
+    await repository.importUrls("follow", ["https://creator.example/profile", "https://creator.example/blog"]);
+
+    expect((await database.savedItems.toArray()).map((item) => item.kind)).toEqual(["follow", "follow"]);
+    database.close();
+  });
+
   it("keeps same-site subpages separate and gives them distinct temporary identities", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);

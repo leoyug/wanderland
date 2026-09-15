@@ -31,7 +31,7 @@ const colors = [
   { name: "悬停主色", token: "--color-brand-hover", value: "#E96A08" },
   { name: "主色背景 10%", token: "--color-accent-primary-bg", value: "#FF760E · 10%" },
   { name: "主色描边 20%", token: "--color-accent-primary-border", value: "#FF760E · 20%" },
-  { name: "滚动条", token: "--color-scrollbar-thumb", value: "#B7B0A8" },
+  { name: "滚动条", token: "--color-scrollbar-thumb", value: "#DEDEDE" },
   { name: "成功", token: "--color-success", value: "#3B6D53" },
   { name: "提示", token: "--color-info", value: "#356A96" },
   { name: "危险", token: "--color-danger", value: "#FF5252" },

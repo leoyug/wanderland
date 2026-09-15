@@ -1,4 +1,4 @@
-import { RiCloseLine, RiDeleteBinLine } from "@remixicon/react";
+import { RiArchiveLine, RiCloseLine, RiDeleteBinLine } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { Button } from "@/src/components/ui/Button";
@@ -30,7 +30,7 @@ export function ArchiveDialog({ isOpen, onClose }: { isOpen: boolean; onClose: (
         <Modal className="form-modal settings-modal archive-modal">
           <Dialog className="form-dialog">
             {({ close }) => <>
-              <header className="form-dialog-header settings-header"><div><DialogTitle>归档</DialogTitle><p>归档项不会出现在收藏库中，可随时恢复或永久删除。</p></div><Button size="icon" variant="ghost" aria-label="关闭归档" onPress={close}><RiCloseLine size={19} /></Button></header>
+              <header className="form-dialog-header settings-header"><div className="form-dialog-icon"><RiArchiveLine size={20} /></div><div><DialogTitle>归档</DialogTitle><p>归档项不会出现在收藏库中，可随时恢复或永久删除。</p></div><Button size="icon" variant="ghost" aria-label="关闭归档" onPress={close}><RiCloseLine size={19} /></Button></header>
               <div className="archive-list">
                 {items.length ? items.map((item) => <article className="archive-row" key={item.id}>
                   <div><strong>{item.title}</strong><span>{formatArchivedAt(item.archivedAt!)}</span></div>

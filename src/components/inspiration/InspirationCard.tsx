@@ -24,7 +24,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, on
   useLayoutEffect(() => {
     const card = cardRef.current;
     if (!card || !masonry) return;
-    const updateSpan = () => { card.style.gridRowEnd = `span ${Math.ceil(card.getBoundingClientRect().height + 12)}`; };
+    const updateSpan = () => { card.style.gridRowEnd = `span ${Math.ceil(card.getBoundingClientRect().height + 8)}`; };
     updateSpan();
     const observer = new ResizeObserver(updateSpan);
     observer.observe(card);

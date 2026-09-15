@@ -1,4 +1,4 @@
-import { RiCloseLine, RiDeleteBinLine, RiEditLine } from "@remixicon/react";
+import { RiCloseLine, RiDeleteBinLine, RiEditLine, RiPriceTag3Line } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { Button } from "@/src/components/ui/Button";
@@ -22,7 +22,7 @@ export function TagManagerDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       <Modal className="form-modal settings-modal">
         <Dialog className="form-dialog">
           {({ close }) => <>
-            <header className="form-dialog-header settings-header"><div><DialogTitle>管理标签</DialogTitle><p>重命名为已有标签会自动合并，并保留原名称作为别名。</p></div><Button size="icon" variant="ghost" aria-label="关闭标签管理" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header settings-header"><div className="form-dialog-icon"><RiPriceTag3Line size={20} /></div><div><DialogTitle>管理标签</DialogTitle><p>重命名为已有标签会自动合并，并保留原名称作为别名。</p></div><Button size="icon" variant="ghost" aria-label="关闭标签管理" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="tag-manager-list">
               {tags.length ? tags.map((tag) => <div className="tag-manager-row" key={tag.id}>
                 {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={`重命名 ${tag.name}`} /> : <div><strong>#{tag.name}</strong><span>{tag.usageCount} 个收藏项{tag.aliases.length ? ` · 别名 ${tag.aliases.join("、")}` : ""}</span></div>}

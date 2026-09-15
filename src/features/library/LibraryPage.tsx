@@ -22,6 +22,7 @@ import { cn } from "@/src/lib/cn";
 import { DataImportDialog } from "./DataImportDialog";
 import { AiSettingsDialog } from "./AiSettingsDialog";
 import { ArchiveDialog } from "./ArchiveDialog";
+import { BackupDialog } from "./BackupDialog";
 import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
@@ -69,10 +70,11 @@ export function LibraryPage() {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(initialState.layout);
   const [selectedId, setSelectedId] = useState<string | null>(initialState.item);
   const [importKind, setImportKind] = useState<SavedItemKind | null>(null);
-  const [dataImportOpen, setDataImportOpen] = useState(false);
+  const [bookmarkImportOpen, setBookmarkImportOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; title: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ itemId: string; x: number; y: number; trigger: HTMLElement } | null>(null);
   const [detailIntent, setDetailIntent] = useState<{ mode: "details" | "snapshot"; editing: boolean; editFocus?: "tags" }>({ mode: "details", editing: false });
@@ -205,7 +207,7 @@ export function LibraryPage() {
     return true;
   }
 
-  async function importItems(urls: string[], enrichMetadata: boolean) {
+  async function importItems(kind: SavedItemKind, urls: string[], enrichMetadata: boolean) {
     const origins = [...new Set(urls.map((url) => {
       const target = new URL(url);
       return `${target.protocol}//${target.hostname}/*`;
@@ -215,7 +217,7 @@ export function LibraryPage() {
       : Promise.resolve(false);
     const [permissionGranted, result] = await Promise.all([
       permissionRequest,
-      inspirationRepository.importWebsiteUrls(urls),
+      inspirationRepository.importUrls(kind, urls),
     ]);
     if (permissionGranted && result.addedItems.length > 0) {
       const items = result.addedItems.map(({ id, url }) => {
@@ -232,7 +234,7 @@ export function LibraryPage() {
     }
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
-      changeScope("website");
+      changeScope(kind);
     }
     return result;
   }
@@ -263,7 +265,7 @@ export function LibraryPage() {
   ] : [];
 
   return (
-    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onSavedViewCreate={createSavedView} onOpenImport={() => setDataImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)} onOpenArchive={() => setArchiveOpen(true)}>
+    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onOpenBookmarks={() => setBookmarkImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)} onOpenArchive={() => setArchiveOpen(true)} onOpenBackup={() => setBackupOpen(true)}>
       <div className="library-page">
         <header className="library-intro">
           <SearchField className="library-search" value={query} onChange={setQuery} aria-label="搜索收藏项">
@@ -291,11 +293,12 @@ export function LibraryPage() {
         {liveItems === undefined ? <div className="empty-state" aria-live="polite"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>正在打开本地收藏库</h2><p>收藏项会在读取完成后自动出现。</p></div> : visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
-      <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} />
+      <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} onBulkAdd={importItems} />
       <AiSettingsDialog isOpen={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
       <ArchiveDialog isOpen={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      <BackupDialog isOpen={backupOpen} onClose={() => setBackupOpen(false)} />
       <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
-      <DataImportDialog isOpen={dataImportOpen} onClose={() => setDataImportOpen(false)} onImport={importItems} />
+      <DataImportDialog isOpen={bookmarkImportOpen} onClose={() => setBookmarkImportOpen(false)} onImport={(urls, enrichMetadata) => importItems("website", urls, enrichMetadata)} />
       {contextMenu && contextItem ? <ContextMenu label={`${contextItem.title} 操作菜单`} position={contextMenu} actions={contextActions} onClose={closeItemContextMenu} /> : null}
       <ConfirmDialog
         isOpen={Boolean(deleteCandidate)}

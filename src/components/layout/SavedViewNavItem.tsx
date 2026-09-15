@@ -1,5 +1,6 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { SidebarIcon } from "./SidebarIcon";
@@ -21,6 +22,9 @@ export function SavedViewNavItem({ view, iconSrc, isActive, onPress, onRename, o
   const [draft, setDraft] = useState(view.name);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number }>();
 
   useEffect(() => {
     if (isEditing) inputRef.current?.select();
@@ -29,13 +33,41 @@ export function SavedViewNavItem({ view, iconSrc, isActive, onPress, onRename, o
   useEffect(() => {
     if (!isMenuOpen) return;
     const close = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      if (!rootRef.current?.contains(event.target as Node) && !menuRef.current?.contains(event.target as Node)) {
         setIsMenuOpen(false);
         setIsDeleteArmed(false);
       }
     };
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
+  }, [isMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!isMenuOpen) {
+      setMenuPosition(undefined);
+      return;
+    }
+    const positionMenu = () => {
+      const trigger = moreButtonRef.current;
+      if (!trigger) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuWidth = 174;
+      const menuHeight = menuRef.current?.offsetHeight ?? 78;
+      const viewportPadding = 8;
+      const frozenBottom = document.querySelector<HTMLElement>(".sidebar-bottom")?.getBoundingClientRect().top ?? window.innerHeight;
+      const bottomLimit = Math.min(window.innerHeight - viewportPadding, frozenBottom - viewportPadding);
+      const left = Math.min(Math.max(viewportPadding, triggerRect.right - menuWidth), window.innerWidth - menuWidth - viewportPadding);
+      const below = triggerRect.bottom + 8;
+      const top = below + menuHeight <= bottomLimit ? below : Math.max(viewportPadding, triggerRect.top - menuHeight - 8);
+      setMenuPosition({ left, top });
+    };
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
   }, [isMenuOpen]);
 
   const finishEditing = () => {
@@ -88,14 +120,15 @@ export function SavedViewNavItem({ view, iconSrc, isActive, onPress, onRename, o
 
       {!view.isSystem && !isEditing ? (
         <>
-          <button type="button" className="saved-view-more" aria-label={`管理快捷视图“${view.name}”`} aria-expanded={isMenuOpen} onClick={() => { setIsMenuOpen((open) => !open); setIsDeleteArmed(false); }}>
+          <button ref={moreButtonRef} type="button" className="saved-view-more" aria-label={`管理快捷视图“${view.name}”`} aria-expanded={isMenuOpen} onClick={() => { setIsMenuOpen((open) => !open); setIsDeleteArmed(false); }}>
             <RiMore2Line size={16} aria-hidden="true" />
           </button>
-          {isMenuOpen ? (
-            <div className="popover-surface saved-view-menu" role="menu" aria-label={`管理${view.name}`}>
+          {isMenuOpen && menuPosition ? createPortal(
+            <div ref={menuRef} className="popover-surface saved-view-menu" role="menu" aria-label={`管理${view.name}`} style={menuPosition}>
               <button type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); setIsEditing(true); }}><RiEditLine size={15} />编辑名称</button>
               <button type="button" role="menuitem" className="is-danger" onClick={() => { if (isDeleteArmed) onDelete(); else setIsDeleteArmed(true); }}><RiDeleteBinLine size={15} />{isDeleteArmed ? "确认删除" : "删除视图"}</button>
-            </div>
+            </div>,
+            document.body,
           ) : null}
         </>
       ) : null}

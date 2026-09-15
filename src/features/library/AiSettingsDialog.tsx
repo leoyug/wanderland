@@ -1,4 +1,4 @@
-import { RiCloseLine, RiRefreshLine } from "@remixicon/react";
+import { RiArrowDownSLine, RiCloseLine, RiRefreshLine, RiSparkling2Line } from "@remixicon/react";
 import { useEffect, useState } from "react";
 import { endpointPermissionPattern } from "@/src/ai/config";
 import { defaultAiSettings } from "@/src/ai/config";
@@ -108,10 +108,10 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       <Modal className="form-modal settings-modal ai-settings-modal">
         <Dialog className="form-dialog">
           {({ close }) => <>
-            <header className="form-dialog-header settings-header"><div><DialogTitle>AI 助手</DialogTitle><p>可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。</p></div><Button size="icon" variant="ghost" aria-label="关闭 AI 设置" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header settings-header"><div className="form-dialog-icon"><RiSparkling2Line size={20} /></div><div><DialogTitle>AI 助手</DialogTitle><p>可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。</p></div><Button size="icon" variant="ghost" aria-label="关闭 AI 设置" onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body ai-settings-body">
               <Switch className="ai-toggle" label="启用 AI 自动整理" description="关闭后已保存的收藏项和本地功能保持不变。" isSelected={settings.enabled} onChange={(enabled) => setSettings((current) => ({ ...current, enabled }))} />
-              <label className="ai-provider-field"><span>Provider</span><select value={settings.provider} onChange={(event) => setProvider(event.target.value as AiSettings["provider"])}><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="custom">自定义 OpenAI-compatible</option></select><small>{settings.provider === "deepseek" ? "使用 DeepSeek 官方 API，默认 deepseek-v4-flash。" : "选择预设会同步填入官方 Endpoint 和默认模型。"}</small></label>
+              <label className="ai-provider-field"><span>Provider</span><span className="ai-provider-select"><select value={settings.provider} onChange={(event) => setProvider(event.target.value as AiSettings["provider"])}><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="custom">自定义 OpenAI-compatible</option></select><RiArrowDownSLine size={18} aria-hidden="true" /></span><small>{settings.provider === "deepseek" ? "使用 DeepSeek 官方 API，默认 deepseek-v4-flash。" : "选择预设会同步填入官方 Endpoint 和默认模型。"}</small></label>
               <Field label="Endpoint" value={settings.endpoint} onChange={(endpoint) => setSettings((current) => ({ ...current, endpoint }))} placeholder="https://api.openai.com/v1" />
               <Field label="Model" value={settings.model} onChange={(model) => setSettings((current) => ({ ...current, model }))} placeholder="gpt-4.1-mini" />
               <Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? "已保存；留空保持不变" : "填写你自己的 API Key"} />

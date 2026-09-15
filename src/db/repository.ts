@@ -565,12 +565,12 @@ export class InspirationRepository {
     }, { pending: 0, running: 0, failed: 0, complete: 0 });
   }
 
-  async importWebsiteUrls(urls: string[]): Promise<ImportSavedItemsResult> {
+  async importUrls(kind: SavedItem["kind"], urls: string[]): Promise<ImportSavedItemsResult> {
     let added = 0;
     let skipped = 0;
     const addedItems: ImportSavedItemsResult["addedItems"] = [];
     for (const url of urls) {
-      const result = await this.createSavedItem({ kind: "website", url, captureMethod: "import" });
+      const result = await this.createSavedItem({ kind, url, captureMethod: "import" });
       if (result.created) {
         added += 1;
         addedItems.push({ id: result.item.id, url: result.item.originalUrl });
@@ -578,6 +578,10 @@ export class InspirationRepository {
       else skipped += 1;
     }
     return { added, skipped, addedItems };
+  }
+
+  async importWebsiteUrls(urls: string[]): Promise<ImportSavedItemsResult> {
+    return this.importUrls("website", urls);
   }
 
   async toggleFavorite(id: string) {

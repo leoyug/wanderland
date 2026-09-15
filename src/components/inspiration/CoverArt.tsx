@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 
 export function CoverArt({ item, large = false, fit = "cover" }: { item: LibraryItem; large?: boolean; fit?: "cover" | "contain" }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [blobUrl, setBlobUrl] = useState<string>();
   useEffect(() => {
     setImageFailed(false);
+    setLoadAttempt(0);
     if (!item.cover.blob) { setBlobUrl(undefined); return; }
     const nextUrl = URL.createObjectURL(item.cover.blob);
     setBlobUrl(nextUrl);
@@ -15,7 +17,7 @@ export function CoverArt({ item, large = false, fit = "cover" }: { item: Library
 
   const image = item.cover.image ?? blobUrl;
   if (image && !imageFailed) {
-    return <img className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => setImageFailed(true)} />;
+    return <img key={`${image}:${loadAttempt}`} className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => { if (loadAttempt === 0) setLoadAttempt(1); else setImageFailed(true); }} />;
   }
   return (
     <div

@@ -36,6 +36,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [coverBlob, setCoverBlob] = useState<File>();
+  const [coverPasteError, setCoverPasteError] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [aiRetrying, setAiRetrying] = useState(false);
 
@@ -47,6 +48,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setDescription(item.description);
     setTags(item.tags);
     setCoverBlob(undefined);
+    setCoverPasteError("");
     setDeleteArmed(false);
     setAiRetrying(false);
   }, [initialEditing, initialMode, item]);
@@ -83,7 +85,18 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setDescription(item.description);
     setTags(item.tags);
     setCoverBlob(undefined);
+    setCoverPasteError("");
     setIsEditing(false);
+  };
+  const pasteCover = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const image = Array.from(event.clipboardData.files).find((file) => file.type.startsWith("image/"));
+    event.preventDefault();
+    if (!image) {
+      setCoverPasteError("剪贴板中没有图片。请先复制图片，再粘贴到这里。");
+      return;
+    }
+    setCoverBlob(image);
+    setCoverPasteError("");
   };
 
   return (
@@ -108,7 +121,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                     <Field label="标题" value={title} onChange={setTitle} />
                     <Field label="描述" value={description} onChange={setDescription} multiline />
                     <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
-                    <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "选择后将锁定封面，不再被自动采集覆盖。"}</small></div><input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => setCoverBlob(event.target.files?.[0])} /></div>
+                    <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "保存后将锁定封面，不再被自动采集覆盖。"}</small></div><div className="cover-paste-target" tabIndex={0} role="textbox" aria-label="粘贴封面图片" aria-multiline="false" onPaste={pasteCover}>点击这里，然后按 ⌘V / Ctrl+V 粘贴图片</div>{coverPasteError ? <small role="alert">{coverPasteError}</small> : null}<input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => { setCoverBlob(event.target.files?.[0]); setCoverPasteError(""); }} /></div>
                   </form> : <>
                     <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || "暂无描述"}</p></div></div>
                     <section className="detail-section"><div className="detail-taxonomy"><span className="kind-chip">{kindLabel}</span><div className="tag-list">{item.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}</div></div></section>
