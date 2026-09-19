@@ -8,10 +8,14 @@ import type { ExtensionRequest } from "@/src/capture/types";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
-import { RadioGroup } from "@/src/components/ui/RadioGroup";
+import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { Switch } from "@/src/components/ui/Switch";
 
 const emptySummary: AiTaskSummary = { pending: 0, running: 0, failed: 0, complete: 0 };
+const apiKeyStorageOptions = [
+  { value: "session" as const, label: "仅当前浏览器会话", description: "浏览器完全退出后需要重新填写。" },
+  { value: "local" as const, label: "保存在本地浏览器", description: "不使用同步存储，但扩展无法真正隐藏客户端 Key。" },
+];
 
 export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [settings, setSettings] = useState<AiSettings>(defaultAiSettings);
@@ -90,6 +94,7 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const setStorage = (apiKeyStorage: ApiKeyStorage) => setSettings((current) => ({ ...current, apiKeyStorage }));
+  const selectedStorageDescription = apiKeyStorageOptions.find((option) => option.value === settings.apiKeyStorage)?.description ?? "浏览器完全退出后需要重新填写。";
   const setProvider = (provider: AiSettings["provider"]) => {
     if (provider !== settings.provider) {
       setHasApiKey(false);
@@ -116,7 +121,10 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
               <Field label="Model" value={settings.model} onChange={(model) => setSettings((current) => ({ ...current, model }))} placeholder="gpt-4.1-mini" />
               <Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? "已保存；留空保持不变" : "填写你自己的 API Key"} />
               <div className="ai-connection-test"><Button variant="secondary" size="sm" isDisabled={connectionState === "testing"} onPress={() => void testConnection()}><RiRefreshLine size={15} />{connectionState === "testing" ? "正在测试…" : "测试连接"}</Button>{connectionMessage ? <span className={connectionState === "success" ? "is-success" : "is-error"} role="status">{connectionMessage}</span> : <small>会发送一个最小请求，不会保存当前表单或写入 API Key。</small>}</div>
-              <RadioGroup className="ai-key-storage" label="Key 保存方式" value={settings.apiKeyStorage} onChange={setStorage} options={[{ value: "session", label: "仅当前浏览器会话", description: "浏览器完全退出后需要重新填写。" }, { value: "local", label: "保存在本地浏览器", description: "不使用同步存储，但扩展无法真正隐藏客户端 Key。" }]} />
+              <div className="ai-key-storage-setting">
+                <div className="ai-key-storage-setting-copy"><strong>Key 保存方式</strong><small>{selectedStorageDescription}</small></div>
+                <SelectMenu<ApiKeyStorage> label="Key 保存方式" value={settings.apiKeyStorage} options={apiKeyStorageOptions} onChange={setStorage} />
+              </div>
               <div className="ai-privacy-note"><strong>发送范围</strong><p>只会向你配置的 Provider 发送收藏项链接、标题、现有描述、最多 12,000 字的正文与已有标签名。Key 不进入 IndexedDB，也不包含在数据导入中。</p></div>
               <div className="ai-task-status"><div><strong>处理任务</strong><span>等待 {summary.pending} · 失败 {summary.failed} · 完成 {summary.complete}</span></div><Button variant="secondary" size="sm" isDisabled={!summary.failed} onPress={() => void retryFailed()}><RiRefreshLine size={15} />重试失败任务</Button></div>
               {error ? <p className="form-error" role="alert">{error}</p> : null}

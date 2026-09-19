@@ -1,9 +1,10 @@
-import { RiArrowRightUpLine, RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
+import { RiArrowRightUpLine } from "@remixicon/react";
 import type { MouseEventHandler } from "react";
 import { Badge } from "@/src/components/ui/Badge";
 import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { CoverArt } from "./CoverArt";
+import { FavoriteButton } from "./FavoriteButton";
 import { SiteIcon } from "./SiteIcon";
 
 interface InspirationListItemProps {
@@ -38,9 +39,7 @@ export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite
       </div>
       {item.kind === "website" && hasCoverImage ? <div className="list-item-cover"><CoverArt item={item} /></div> : null}
       {item.kind === "follow" ? <SiteIcon src={item.siteIcon} pageUrl={item.url} variant="avatar" /> : null}
-      <button className={cn("favorite-button", item.isFavorite && "is-active")} type="button" aria-label={item.isFavorite ? "取消星标" : "添加星标"} aria-pressed={item.isFavorite} onClick={(event) => { event.stopPropagation(); onToggleFavorite(); }}>
-        {item.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />}
-      </button>
+      <FavoriteButton isFavorite={item.isFavorite} onToggle={onToggleFavorite} />
     </article>
   );
 }

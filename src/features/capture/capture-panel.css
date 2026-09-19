@@ -23,6 +23,24 @@
 .capture-description textarea { min-height: 78px; }
 .capture-result { display: flex; align-items: flex-start; gap: 10px; padding: 16px 12px; }
 .capture-result-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--color-success); background: var(--color-success-soft); border-radius: var(--radius-control); }
+.t-spinner-check-wrap { display: inline-flex; filter: blur(0); transition: filter var(--capture-morph) var(--capture-morph-ease); }
+.t-spinner-check-wrap.is-crossing { filter: blur(var(--capture-cross-blur)); transition: filter calc(var(--capture-check-transition) * .45) var(--capture-cross-ease); }
+.t-spinner-check { position: relative; width: 22px; height: 22px; flex: 0 0 22px; scale: 1; transition: scale var(--capture-morph) var(--capture-morph-ease); will-change: scale, transform; }
+.t-spinner-check[data-state="done"] { scale: var(--capture-done-scale); transition: scale var(--capture-done-scale-duration) var(--capture-done-scale-ease); animation-name: capture-check-lift, capture-check-settle; animation-duration: var(--capture-morph), var(--capture-settle); animation-timing-function: var(--capture-cross-ease), var(--capture-settle-ease); animation-delay: 0ms, var(--capture-morph); animation-fill-mode: both, both; }
+.t-spinner-check-track, .t-spinner-check-arc, .t-spinner-check-fill, .t-spinner-check-mark { position: absolute; inset: 0; border-radius: 50%; }
+.t-spinner-check-track { border: var(--capture-spinner-stroke) solid color-mix(in srgb, var(--color-success) 18%, transparent); transition: opacity var(--capture-morph) ease, filter var(--capture-morph) ease; }
+.t-spinner-check[data-state="done"] .t-spinner-check-track { opacity: 0; transition-duration: calc(var(--capture-check-transition) * .7); }
+.t-spinner-check-arc { border: var(--capture-spinner-stroke) solid transparent; border-top-color: currentColor; animation: capture-spinner-rotate var(--capture-spinner-rotation) linear infinite; transition: opacity var(--capture-morph) var(--capture-morph-ease); will-change: transform; }
+.t-spinner-check[data-state="done"] .t-spinner-check-arc { opacity: 0; animation-play-state: paused; transition-duration: calc(var(--capture-check-transition) * .5); }
+.t-spinner-check-fill { background: var(--color-success); opacity: 0; transition: opacity var(--capture-morph) var(--capture-morph-ease); will-change: opacity; }
+.t-spinner-check[data-state="done"] .t-spinner-check-fill { opacity: 1; transition: opacity var(--capture-check-transition) var(--capture-cross-ease); }
+.t-spinner-check-mark { display: grid; place-items: center; }
+.t-spinner-check-mark svg { width: 100%; height: 100%; display: block; }
+.t-spinner-check-mark path { fill: none; stroke: var(--color-surface); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: var(--capture-check-length, 13); stroke-dashoffset: var(--capture-check-length, 13); transition: stroke-dashoffset var(--capture-check-uncheck) var(--capture-morph-ease); }
+.t-spinner-check[data-state="done"] .t-spinner-check-mark path { stroke-dashoffset: 0; transition: stroke-dashoffset var(--capture-check-draw) var(--capture-morph-ease) var(--capture-check-delay); }
+@keyframes capture-spinner-rotate { to { transform: rotate(360deg); } }
+@keyframes capture-check-lift { from { transform: translateY(0); } to { transform: translateY(calc(var(--capture-lift) * -1)); } }
+@keyframes capture-check-settle { from { transform: translateY(calc(var(--capture-lift) * -1)); } to { transform: translateY(0); } }
 .capture-result strong { color: var(--color-ink); font-size: var(--text-body); }
 .capture-result p, .capture-error p { margin: 4px 0 0; color: var(--color-muted); font-size: var(--text-label); line-height: 1.55; }
 .capture-error { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 11px; color: var(--color-danger); background: var(--color-danger-soft); border-radius: var(--radius-control); }
@@ -30,5 +48,6 @@
 .capture-footer { display: flex; }
 .capture-footer .button { width: 100%; }
 @keyframes capture-panel-in { from { opacity: 0; transform: translateX(10px) scale(.985); } }
+:root { --capture-morph: 250ms; --capture-morph-ease: cubic-bezier(.22, 1, .36, 1); --capture-settle: 300ms; --capture-settle-ease: cubic-bezier(.14, 2.56, .94, 1); --capture-check-transition: 350ms; --capture-check-draw: 600ms; --capture-check-delay: 230ms; --capture-check-uncheck: 150ms; --capture-spinner-stroke: 2.5px; --capture-spinner-rotation: 900ms; --capture-done-scale: 1.09; --capture-done-scale-duration: 350ms; --capture-done-scale-ease: cubic-bezier(.34, 1.96, .94, 1); --capture-lift: 3px; --capture-cross-blur: .5px; --capture-cross-ease: cubic-bezier(.34, 1.35, .64, 1); }
 @media (max-width: 430px) { .capture-panel { top: 8px; right: 8px; width: calc(100vw - 16px); max-height: calc(100vh - 16px); } }
-@media (prefers-reduced-motion: reduce) { .capture-panel { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .capture-panel { animation: none; } .t-spinner-check-wrap, .t-spinner-check, .t-spinner-check-track, .t-spinner-check-arc, .t-spinner-check-fill, .t-spinner-check-mark path { transition: none !important; animation: none !important; } .t-spinner-check[data-state="done"] .t-spinner-check-mark path { stroke-dashoffset: 0; } }

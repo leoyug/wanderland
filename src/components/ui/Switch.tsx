@@ -21,8 +21,8 @@ export function Switch({ label, description, className, ...props }: SwitchProps)
   return (
     <SwitchFieldPrimitive className="switch-field" {...props}>
       <SwitchButton className={cn("switch", className)}>
-        <span className="switch-control" data-slot="indicator" aria-hidden="true"><span className="switch-thumb" /></span>
         <span className="switch-copy" data-slot="control-label"><strong>{label}</strong>{description ? <small slot="description">{description}</small> : null}</span>
+        <span className="switch-control" data-slot="indicator" aria-hidden="true"><span className="switch-thumb" /></span>
       </SwitchButton>
     </SwitchFieldPrimitive>
   );

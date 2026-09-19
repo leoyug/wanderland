@@ -1,12 +1,11 @@
 import {
   RiArticleLine,
-  RiCheckLine,
   RiCloseLine,
   RiGlobalLine,
   RiRefreshLine,
   RiUserFollowLine,
 } from "@remixicon/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Field } from "@/src/components/ui/Field";
 import { TagInput } from "@/src/components/ui/TagInput";
 import type { CaptureResponse, ExtensionRequest } from "@/src/capture/types";
@@ -37,6 +36,8 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [state, setState] = useState<SubmitState>("ready");
   const [result, setResult] = useState<CaptureResponse>();
+  const [isStatusCrossing, setIsStatusCrossing] = useState(false);
+  const statusIconRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     void browser.runtime.sendMessage({ type: "tags:list" } satisfies ExtensionRequest)
@@ -51,6 +52,17 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
+
+  useEffect(() => {
+    if (state !== "success") {
+      setIsStatusCrossing(false);
+      return;
+    }
+    setIsStatusCrossing(true);
+    const duration = parseFloat(getComputedStyle(statusIconRef.current ?? document.documentElement).getPropertyValue("--capture-check-transition")) || 350;
+    const timer = window.setTimeout(() => setIsStatusCrossing(false), duration * 0.45);
+    return () => window.clearTimeout(timer);
+  }, [state]);
 
   const submit = async () => {
     if (state === "saving") return;
@@ -97,6 +109,12 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
   const statusText = result?.ok
     ? result.created ? "收藏项已保存" : "收藏项已存在，快照已更新"
     : result?.error;
+  const resultTitle = state === "saving" ? "正在保存收藏项" : statusText;
+  const resultDescription = state === "saving"
+    ? "正在保存标题、描述与正文快照。"
+    : result?.ok && result.completeness === "complete"
+      ? "标题、描述与正文快照已保存。"
+      : "页面基本信息已保存，快照可能不完整。";
 
   return (
     <section className={`capture-panel${state === "success" ? " is-success" : ""}`} role="dialog" aria-modal="false" aria-label="收藏当前页面">
@@ -117,10 +135,19 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
         <small title={page.url}>{page.url}</small>
       </section>
 
-      {state === "success" ? (
-        <section className="capture-result" aria-live="polite">
-          <div className="capture-result-icon"><RiCheckLine size={20} /></div>
-          <div><strong>{statusText}</strong><p>{result?.ok && result.completeness === "complete" ? "标题、描述与正文快照已保存。" : "页面基本信息已保存，快照可能不完整。"}</p></div>
+      {state === "saving" || state === "success" ? (
+        <section className="capture-result" aria-live="polite" aria-busy={state === "saving"}>
+          <div className="capture-result-icon">
+            <span ref={statusIconRef} className={`t-spinner-check-wrap${isStatusCrossing ? " is-crossing" : ""}`}>
+              <span className="t-spinner-check" data-state={state === "success" ? "done" : "spinning"}>
+                <span className="t-spinner-check-track" aria-hidden="true" />
+                <span className="t-spinner-check-arc" aria-hidden="true" />
+                <span className="t-spinner-check-fill" aria-hidden="true" />
+                <span className="t-spinner-check-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 12.5L10.8 15.5L16.4 9.5" /></svg></span>
+              </span>
+            </span>
+          </div>
+          <div><strong>{resultTitle}</strong><p>{resultDescription}</p></div>
         </section>
       ) : (
         <>

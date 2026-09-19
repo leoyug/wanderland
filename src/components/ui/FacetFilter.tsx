@@ -1,4 +1,4 @@
-import { RiArrowDownSLine, RiCheckLine, RiCloseLine, RiSearchLine } from "@remixicon/react";
+import { RiArrowDownSLine, RiCloseLine, RiSearchLine } from "@remixicon/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Checkbox, Dialog, DialogTrigger, Input, Popover, SearchField } from "react-aria-components";
 import { cn } from "@/src/lib/cn";
@@ -51,7 +51,9 @@ export function FacetFilter({ label, icon, options, selectedValues, onChange, se
           <div className="facet-filter-options">
             {visibleOptions.map((option) => (
               <Checkbox key={option.id} className="facet-filter-option" isSelected={selectedValues.includes(option.id)} onChange={() => toggleOption(option.id)}>
-                <span className="facet-checkbox" aria-hidden="true"><RiCheckLine size={12} /></span>
+                <span className="facet-checkbox t-check" aria-hidden="true">
+                  <svg viewBox="0 0 10.1668 10.1668" width="12" height="12" aria-hidden="true"><path d="M1 5.52L3.92 9.17L9.17 1" /></svg>
+                </span>
                 <span className="facet-option-label">{option.label}</span>
                 <span className="facet-option-count">{option.count}</span>
               </Checkbox>
