@@ -44,6 +44,12 @@ export interface ImportSavedItemsResult {
   addedItems: Array<{ id: string; url: string }>;
 }
 
+export interface DeletedSavedItem {
+  item: SavedItem;
+  snapshots: Snapshot[];
+  tasks: PersistentTask[];
+}
+
 export interface DemoSeedItem {
   id: string;
   kind: SavedItem["kind"];
@@ -140,10 +146,14 @@ export class InspirationRepository {
     });
   }
 
-  async deleteSavedItem(itemId: string) {
-    await this.database.transaction("rw", this.database.savedItems, this.database.snapshots, this.database.tasks, this.database.tags, async () => {
+  async deleteSavedItem(itemId: string): Promise<DeletedSavedItem | null> {
+    return this.database.transaction("rw", this.database.savedItems, this.database.snapshots, this.database.tasks, this.database.tags, async () => {
       const item = await this.database.savedItems.get(itemId);
-      if (!item) return;
+      if (!item) return null;
+      const [snapshots, tasks] = await Promise.all([
+        this.database.snapshots.where("itemId").equals(itemId).toArray(),
+        this.database.tasks.where("itemId").equals(itemId).toArray(),
+      ]);
       await this.database.savedItems.delete(itemId);
       await this.database.snapshots.where("itemId").equals(itemId).delete();
       await this.database.tasks.where("itemId").equals(itemId).delete();
@@ -151,6 +161,25 @@ export class InspirationRepository {
         const usageCount = await this.database.savedItems.where("tagIds").equals(tagId).count();
         await this.database.tags.update(tagId, { usageCount, updatedAt: Date.now() });
       }
+      return { item, snapshots, tasks };
+    });
+  }
+
+  async restoreSavedItem(deleted: DeletedSavedItem) {
+    return this.database.transaction("rw", this.database.savedItems, this.database.snapshots, this.database.tasks, this.database.tags, async () => {
+      const existing = await this.database.savedItems.get(deleted.item.id);
+      if (existing) return true;
+      const collision = await this.database.savedItems.where("[kind+canonicalUrl]").equals([deleted.item.kind, deleted.item.canonicalUrl]).first();
+      if (collision) return false;
+      await this.database.savedItems.add(deleted.item);
+      if (deleted.snapshots.length) await this.database.snapshots.bulkAdd(deleted.snapshots);
+      if (deleted.tasks.length) await this.database.tasks.bulkAdd(deleted.tasks);
+      const now = Date.now();
+      for (const tagId of deleted.item.tagIds) {
+        const usageCount = await this.database.savedItems.where("tagIds").equals(tagId).count();
+        await this.database.tags.update(tagId, { usageCount, updatedAt: now });
+      }
+      return true;
     });
   }
 

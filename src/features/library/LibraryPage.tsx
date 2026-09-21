@@ -1,4 +1,4 @@
-import { RiArchiveLine, RiArrowUpDownLine, RiBookmarkFill, RiBookmarkLine, RiCloseLine, RiCommandLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiFileCopyLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine, RiSparkling2Line, RiTextSnippet } from "@remixicon/react";
+import { RiArchiveLine, RiArrowUpDownLine, RiBookmarkFill, RiBookmarkLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiFileCopyLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine, RiSparkling2Line, RiTextSnippet } from "@remixicon/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
@@ -7,16 +7,16 @@ import { InspirationCard, type InspirationLayout } from "@/src/components/inspir
 import { InspirationListItem } from "@/src/components/inspiration/InspirationListItem";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Button";
-import { ConfirmDialog } from "@/src/components/ui/ConfirmDialog";
+import { AnimatedSearchField } from "@/src/components/ui/AnimatedSearchField";
 import { ContextMenu, type ContextMenuAction } from "@/src/components/ui/ContextMenu";
 import { FacetFilter } from "@/src/components/ui/FacetFilter";
 import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
-import { SearchField, SearchInput } from "@/src/components/ui/SearchField";
+import { useToast } from "@/src/components/ui/Toast";
 import { seedDevelopmentData } from "@/src/db/developmentSeed";
-import { inspirationRepository } from "@/src/db/repository";
-import { isSavedItemProcessed, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
+import { inspirationRepository, type DeletedSavedItem } from "@/src/db/repository";
+import { isSavedItemProcessed, type LibraryScope, type SavedItemKind, type UpdateSavedItemInput } from "@/src/domain/inspiration";
 import { createLibrarySearchIndex } from "@/src/search/librarySearch";
 import { cn } from "@/src/lib/cn";
 import { DataImportDialog } from "./DataImportDialog";
@@ -26,6 +26,7 @@ import { BackupDialog } from "./BackupDialog";
 import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
+import { LibrarySkeleton } from "./LibrarySkeleton";
 
 type LayoutMode = InspirationLayout;
 type SortOrder = "newest" | "oldest";
@@ -57,6 +58,7 @@ function readInitialState() {
 }
 
 export function LibraryPage() {
+  const { showToast } = useToast();
   const initialState = useMemo(readInitialState, []);
   const liveItems = useLiveQuery(() => inspirationRepository.listLibraryItems(), []);
   const liveViews = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []);
@@ -75,7 +77,6 @@ export function LibraryPage() {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
-  const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; title: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ itemId: string; x: number; y: number; trigger: HTMLElement } | null>(null);
   const [detailIntent, setDetailIntent] = useState<{ mode: "details" | "snapshot"; editing: boolean; editFocus?: "tags" }>({ mode: "details", editing: false });
   const searchRef = useRef<HTMLInputElement>(null);
@@ -145,10 +146,14 @@ export function LibraryPage() {
     setSelectedTags(view?.tags ?? []);
     setSortOrder("newest");
   };
-  const renameSavedView = (id: string, name: string) => { void inspirationRepository.renameSavedView(id, name); };
-  const deleteSavedView = (id: string) => {
-    void inspirationRepository.deleteSavedView(id);
+  const renameSavedView = async (id: string, name: string) => {
+    await inspirationRepository.renameSavedView(id, name);
+    showToast("快捷视图已保存", { tone: "success" });
+  };
+  const deleteSavedView = async (id: string) => {
+    await inspirationRepository.deleteSavedView(id);
     setActiveSavedView((current) => current === id ? null : current);
+    showToast("快捷视图已删除", { tone: "success" });
   };
   const moveSavedView = (sourceId: string, targetId: string) => {
     void inspirationRepository.moveSavedView(sourceId, targetId);
@@ -156,8 +161,39 @@ export function LibraryPage() {
   const createSavedView = async () => {
     const view = await inspirationRepository.createSavedView({ name: "新快捷视图", scope: activeScope, tags: selectedTags });
     setActiveSavedView(view.id);
+    showToast("快捷视图已保存", { tone: "success" });
   };
   const toggleFavorite = (id: string) => { void inspirationRepository.toggleFavorite(id); };
+  const copyLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("链接已复制", { tone: "success" });
+    } catch {
+      showToast("复制链接失败", { tone: "danger" });
+    }
+  };
+  const archiveItem = async (id: string, archived: boolean) => {
+    await inspirationRepository.setArchived(id, archived);
+    showToast(archived ? "收藏项已归档" : "已取消归档", { tone: "success" });
+  };
+  const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
+    try {
+      const restored = await inspirationRepository.restoreSavedItem(deleted);
+      showToast(restored ? "已撤回删除" : "撤回失败：收藏项已存在", { tone: restored ? "success" : "danger" });
+    } catch {
+      showToast("撤回失败，请稍后重试", { tone: "danger" });
+    }
+  };
+  const deleteItem = async (id: string) => {
+    const deleted = await inspirationRepository.deleteSavedItem(id);
+    if (!deleted) return;
+    showToast("收藏项已删除", { tone: "success", duration: 5000, action: { label: "撤回", onPress: () => restoreDeletedItem(deleted) } });
+  };
+  const updateItem = async (input: UpdateSavedItemInput) => {
+    if (!selectedItem) return;
+    await inspirationRepository.updateSavedItem(selectedItem.id, input);
+    showToast("修改已保存", { tone: "success" });
+  };
 
   function navigateDetail(direction: -1 | 1) {
     if (!selectedId || visibleItems.length === 0) return;
@@ -204,6 +240,7 @@ export function LibraryPage() {
     }
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     changeScope(kind);
+    showToast("收藏项已添加", { tone: "success" });
     return true;
   }
 
@@ -235,6 +272,7 @@ export function LibraryPage() {
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
       changeScope(kind);
+      showToast(`导入完成：新增 ${result.added} 个收藏项`, { tone: "success" });
     }
     return result;
   }
@@ -254,24 +292,21 @@ export function LibraryPage() {
   };
   const contextActions: ContextMenuAction[] = contextItem ? [
     { id: "visit", label: "访问网页", icon: <RiExternalLinkLine size={16} />, onAction: () => window.open(contextItem.url, "_blank", "noopener,noreferrer") },
-    { id: "copy", label: "复制链接", icon: <RiFileCopyLine size={16} />, onAction: () => navigator.clipboard.writeText(contextItem.url) },
+    { id: "copy", label: "复制链接", icon: <RiFileCopyLine size={16} />, onAction: () => copyLink(contextItem.url) },
     { id: "favorite", label: contextItem.isFavorite ? "取消星标" : "星标", icon: contextItem.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />, separatorBefore: true, onAction: () => toggleFavorite(contextItem.id) },
     { id: "tags", label: "标签", icon: <RiPriceTag3Line size={16} />, onAction: () => openDetail(contextItem.id, { editing: true, editFocus: "tags" }) },
     { id: "edit", label: "编辑信息", icon: <RiEditLine size={16} />, onAction: () => openDetail(contextItem.id, { editing: true }) },
     { id: "snapshot", label: "查看快照", icon: <RiTextSnippet size={16} />, separatorBefore: true, onAction: () => openDetail(contextItem.id, { mode: "snapshot" }) },
     { id: "ai", label: "AI 整理", icon: <RiSparkling2Line size={16} />, onAction: async () => { await browser.runtime.sendMessage({ type: "ai:retry", itemId: contextItem.id } satisfies ExtensionRequest); } },
-    { id: "archive", label: contextItem.archivedAt ? "取消归档" : "归档", icon: <RiArchiveLine size={16} />, separatorBefore: true, onAction: () => inspirationRepository.setArchived(contextItem.id, !contextItem.archivedAt) },
-    { id: "delete", label: "删除", icon: <RiDeleteBinLine size={16} />, danger: true, onAction: () => setDeleteCandidate({ id: contextItem.id, title: contextItem.title }) },
+    { id: "archive", label: contextItem.archivedAt ? "取消归档" : "归档", icon: <RiArchiveLine size={16} />, separatorBefore: true, onAction: () => archiveItem(contextItem.id, !contextItem.archivedAt) },
+    { id: "delete", label: "删除", icon: <RiDeleteBinLine size={16} />, danger: true, onAction: () => deleteItem(contextItem.id) },
   ] : [];
 
   return (
-    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onOpenBookmarks={() => setBookmarkImportOpen(true)} onOpenTags={() => setTagManagerOpen(true)} onOpenAi={() => setAiSettingsOpen(true)} onOpenArchive={() => setArchiveOpen(true)} onOpenBackup={() => setBackupOpen(true)}>
+    <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onOpenSettings={() => { window.location.hash = "#settings"; }}>
       <div className="library-page">
         <header className="library-intro">
-          <SearchField className="library-search" value={query} onChange={setQuery} aria-label="搜索收藏项">
-            <RiSearchLine size={20} aria-hidden="true" /><SearchInput ref={searchRef} placeholder="搜索设计、创意或关键词……" />
-            {query ? <Button variant="ghost" size="icon" aria-label="清除搜索" onPress={() => setQuery("")}><RiCloseLine size={15} /></Button> : <span className="shortcut"><RiCommandLine size={12} /> K</span>}
-          </SearchField>
+          <AnimatedSearchField className="library-search" value={query} onChange={setQuery} inputRef={searchRef} placeholder="搜索设计、创意或关键词……" aria-label="搜索收藏项" />
         </header>
 
         <div className="collection-toolbar">
@@ -290,7 +325,13 @@ export function LibraryPage() {
           {selectedTags.length ? <SelectedTagBar tags={selectedTags} onRemove={removeTag} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm" onPress={createSavedView}>保存为快捷视图</Button><Button variant="ghost" size="sm" onPress={clearConditions}>清除全部</Button></div>} /> : null}
         </div>
 
-        {liveItems === undefined ? <div className="empty-state" aria-live="polite"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>正在打开本地收藏库</h2><p>收藏项会在读取完成后自动出现。</p></div> : visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div>}
+        <div className={cn("library-results", "t-skel", liveItems !== undefined && "is-revealed")} aria-busy={liveItems === undefined} aria-live={liveItems === undefined ? "polite" : undefined}>
+          {liveItems === undefined ? <span className="sr-only">正在打开本地收藏库</span> : null}
+          <div className="t-skel-skeleton is-pulsing"><LibrarySkeleton /></div>
+          <div className="t-skel-content">
+            {liveItems !== undefined ? visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div> : null}
+          </div>
+        </div>
       </div>
       <FloatingAddMenu onSelect={setImportKind} />
       <ImportDialog kind={importKind} onClose={() => setImportKind(null)} onAdd={addItem} onBulkAdd={importItems} />
@@ -300,14 +341,7 @@ export function LibraryPage() {
       <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
       <DataImportDialog isOpen={bookmarkImportOpen} onClose={() => setBookmarkImportOpen(false)} onImport={(urls, enrichMetadata) => importItems("website", urls, enrichMetadata)} />
       {contextMenu && contextItem ? <ContextMenu label={`${contextItem.title} 操作菜单`} position={contextMenu} actions={contextActions} onClose={closeItemContextMenu} /> : null}
-      <ConfirmDialog
-        isOpen={Boolean(deleteCandidate)}
-        title="删除收藏项？"
-        description={deleteCandidate ? `这将永久删除“${deleteCandidate.title}”，此操作无法撤销。` : ""}
-        onClose={() => setDeleteCandidate(null)}
-        onConfirm={() => deleteCandidate ? inspirationRepository.deleteSavedItem(deleteCandidate.id) : undefined}
-      />
-      <DetailDialog item={selectedItem} initialMode={detailIntent.mode} initialEditing={detailIntent.editing} initialEditFocus={detailIntent.editFocus} onClose={closeDetail} onNavigate={navigateDetail} onUpdate={(input) => inspirationRepository.updateSavedItem(selectedItem!.id, input)} onDelete={async () => { if (!selectedItem) return; await inspirationRepository.deleteSavedItem(selectedItem.id); closeDetail(); }} siteItemCount={selectedSiteItemCount} onShowSite={() => { if (!selectedItem) return; setQuery(selectedItem.siteHost); setActiveScope("all"); setSelectedTags([]); closeDetail(); }} />
+      <DetailDialog item={selectedItem} initialMode={detailIntent.mode} initialEditing={detailIntent.editing} initialEditFocus={detailIntent.editFocus} onClose={closeDetail} onNavigate={navigateDetail} onUpdate={updateItem} onDelete={async () => { if (!selectedItem) return; await deleteItem(selectedItem.id); closeDetail(); }} siteItemCount={selectedSiteItemCount} onShowSite={() => { if (!selectedItem) return; setQuery(selectedItem.siteHost); setActiveScope("all"); setSelectedTags([]); closeDetail(); }} />
     </AppShell>
   );
 }

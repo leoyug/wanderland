@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { LibraryPage } from "@/src/features/library/LibraryPage";
+import { SettingsPage } from "@/src/features/settings/SettingsPage";
 
 const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import("@/src/features/design-system/DesignSystemPage").then((module) => ({ default: module.DesignSystemPage })))
@@ -18,6 +19,10 @@ export function App() {
 
   if (DesignSystemPage && route === "#design-system") {
     return <Suspense fallback={null}><DesignSystemPage onBack={openLibrary} /></Suspense>;
+  }
+
+  if (route === "#settings") {
+    return <SettingsPage onBackToLibrary={openLibrary} />;
   }
 
   return <LibraryPage />;

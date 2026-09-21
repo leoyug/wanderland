@@ -294,6 +294,24 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("restores a deleted item with its snapshot and tasks", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "article", url: "https://example.com/undo" });
+    await repository.completeCapture(created.item.id, createCapture({ url: "https://example.com/undo", canonicalUrl: "https://example.com/undo" }));
+
+    const deleted = await repository.deleteSavedItem(created.item.id);
+    expect(deleted?.item.id).toBe(created.item.id);
+    expect(await database.savedItems.get(created.item.id)).toBeUndefined();
+    expect(await database.snapshots.where("itemId").equals(created.item.id).count()).toBe(0);
+
+    expect(await repository.restoreSavedItem(deleted!)).toBe(true);
+    expect(await database.savedItems.get(created.item.id)).toMatchObject({ canonicalUrl: "https://example.com/undo" });
+    expect(await database.snapshots.where("itemId").equals(created.item.id).count()).toBe(1);
+    expect(await database.tasks.where("itemId").equals(created.item.id).count()).toBeGreaterThan(0);
+    database.close();
+  });
+
   it("applies validated AI output without replacing page descriptions", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);

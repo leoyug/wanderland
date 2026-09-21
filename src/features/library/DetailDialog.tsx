@@ -37,7 +37,6 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   const [tags, setTags] = useState<string[]>([]);
   const [coverBlob, setCoverBlob] = useState<File>();
   const [coverPasteError, setCoverPasteError] = useState("");
-  const [deleteArmed, setDeleteArmed] = useState(false);
   const [aiRetrying, setAiRetrying] = useState(false);
 
   useEffect(() => {
@@ -49,7 +48,6 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setTags(item.tags);
     setCoverBlob(undefined);
     setCoverPasteError("");
-    setDeleteArmed(false);
     setAiRetrying(false);
   }, [initialEditing, initialMode, item]);
 
@@ -129,7 +127,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                   {siteItemCount > 1 ? <Button variant="ghost" size="sm" onPress={onShowSite}>查看来自 {item.siteHost} 的 {siteItemCount} 个收藏项</Button> : null}
                   <div className="snapshot-row"><div><strong>正文快照</strong><span>{snapshotLabel} · 添加于 {item.savedAt}</span></div>{item.snapshotStatus === "failed" ? <a className="button button-secondary button-sm" href={item.url} target="_blank" rel="noreferrer" title="打开来源页面后，可通过扩展 Popup 重试采集">打开来源重试</a> : <Button variant="secondary" size="sm" isDisabled={!snapshot?.cleanHtml} onPress={() => setMode("snapshot")}>{item.snapshotStatus === "pending" ? "等待采集" : "阅读快照"}</Button>}</div>
                   <div className="snapshot-row ai-status-row"><div><strong><RiSparkling2Line size={15} />AI 整理</strong><span>{item.aiError || `${aiLabel}。人工描述和标签始终优先。`}</span></div>{item.aiStatus === "failed" ? <Button variant="secondary" size="sm" isDisabled={aiRetrying} onPress={() => void retryAi()}><RiRefreshLine size={15} />{aiRetrying ? "重试中…" : "重试 AI"}</Button> : null}</div>
-                  {!isEditing ? <div className="detail-actions"><Button variant="secondary" onPress={() => setIsEditing(true)}><RiEditLine size={16} />编辑</Button><Button variant="danger" onPress={() => deleteArmed ? void onDelete() : setDeleteArmed(true)}><RiDeleteBinLine size={16} />{deleteArmed ? "再次点击确认删除" : "删除"}</Button></div> : null}
+                  {!isEditing ? <div className="detail-actions"><Button variant="secondary" onPress={() => setIsEditing(true)}><RiEditLine size={16} />编辑</Button><Button variant="danger" onPress={() => void onDelete()}><RiDeleteBinLine size={16} />删除</Button></div> : null}
                 </div>
               </>
             )}
