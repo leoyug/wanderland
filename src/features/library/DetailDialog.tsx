@@ -1,15 +1,18 @@
+import { SmoothCorners } from "@lisse/react";
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiDeleteBinLine, RiEditLine, RiExternalLinkLine, RiImageLine, RiRefreshLine, RiSparkling2Line } from "@remixicon/react";
+import { reveal } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CoverArt } from "@/src/components/inspiration/CoverArt";
 import { Badge } from "@/src/components/ui/Badge";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
+import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { TagInput } from "@/src/components/ui/TagInput";
 import { inspirationRepository } from "@/src/db/repository";
 import type { ExtensionRequest } from "@/src/capture/types";
-import type { LibraryItem, UpdateSavedItemInput } from "@/src/domain/inspiration";
+import type { LibraryItem, SavedItemKind, UpdateSavedItemInput } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 
 interface DetailDialogProps {
@@ -26,6 +29,11 @@ interface DetailDialogProps {
 }
 
 type DetailMode = "details" | "snapshot" | "image";
+const kindOptions = [
+  { value: "website", label: "网站" },
+  { value: "article", label: "文章" },
+  { value: "follow", label: "关注源" },
+] as const;
 
 export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, siteItemCount, onShowSite, initialMode = "details", initialEditing = false, initialEditFocus }: DetailDialogProps) {
   const snapshot = useLiveQuery(() => item ? inspirationRepository.getSnapshot(item.id) : undefined, [item?.id]);
@@ -34,10 +42,13 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [kind, setKind] = useState<SavedItemKind>("website");
   const [tags, setTags] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState("");
   const [coverBlob, setCoverBlob] = useState<File>();
   const [coverPasteError, setCoverPasteError] = useState("");
   const [aiRetrying, setAiRetrying] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!item) return;
@@ -45,7 +56,9 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setIsEditing(initialEditing);
     setTitle(item.title);
     setDescription(item.description);
+    setKind(item.kind);
     setTags(item.tags);
+    setSaveError("");
     setCoverBlob(undefined);
     setCoverPasteError("");
     setAiRetrying(false);
@@ -62,6 +75,14 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     return () => window.removeEventListener("keydown", navigate);
   }, [isEditing, item, mode, onNavigate]);
 
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!item || !scroll || isEditing) return;
+    const targets = scroll.querySelectorAll<HTMLElement>("[data-detail-reveal]");
+    if (!targets.length) return;
+    return reveal(targets, { root: scroll });
+  }, [item?.id, mode, isEditing]);
+
   if (!item) return null;
   const kindLabel = { website: "网站", article: "文章", follow: "关注源" }[item.kind];
   const snapshotLabel = item.snapshotStatus === "complete" ? "完整" : item.snapshotStatus === "partial" ? "部分内容" : item.snapshotStatus === "pending" ? "等待采集" : "采集失败";
@@ -75,15 +96,22 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     }
   };
   const save = async () => {
-    await onUpdate({ title, description, tags, coverBlob });
-    setIsEditing(false);
+    try {
+      await onUpdate({ kind, title, description, descriptionEdited: description !== item.description, tags, coverBlob });
+      setSaveError("");
+      setIsEditing(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "保存失败，请稍后重试。");
+    }
   };
   const cancelEdit = () => {
     setTitle(item.title);
     setDescription(item.description);
+    setKind(item.kind);
     setTags(item.tags);
     setCoverBlob(undefined);
     setCoverPasteError("");
+    setSaveError("");
     setIsEditing(false);
   };
   const pasteCover = (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -100,25 +128,28 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   return (
     <ModalOverlay className="detail-overlay" isOpen onOpenChange={(open) => !open && onClose()} isDismissable>
       <Modal className="detail-modal">
+        <SmoothCorners className="detail-smooth-surface" corners={{ radius: 16, smoothing: 0.6 }} autoEffects={false}>
         <Dialog className={cn("detail-dialog", `kind-${item.kind}`, isEditing && "is-editing")} aria-label={mode === "snapshot" ? "正文快照" : "收藏项详情"}>
           <header className="detail-header">
             <Button size="icon" variant="ghost" aria-label={mode === "details" ? "关闭详情" : "返回详情"} onPress={() => mode === "details" ? onClose() : setMode("details")}><RiCloseLine size={19} /></Button>
             <span className="detail-host" title={item.sourceLabel}>{mode === "snapshot" ? "本地正文快照" : item.sourceLabel}</span>
             {mode === "details" ? isEditing ? <div className="detail-edit-controls"><Button variant="ghost" size="sm" onPress={cancelEdit}>取消</Button><Button variant="primary" size="sm" onPress={() => void save()}>保存修改</Button></div> : <a className="button button-primary button-sm" href={item.url} target="_blank" rel="noreferrer">打开原网页 <RiExternalLinkLine size={15} /></a> : <Button variant="primary" size="sm" onPress={() => setMode("details")}>返回详情</Button>}
           </header>
-          <div className="detail-scroll">
+          <div ref={scrollRef} className="detail-scroll">
             {mode === "snapshot" ? (
-              <article className="snapshot-reader"><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><DialogTitle>{snapshot?.title || item.title}</DialogTitle>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">这个收藏项还没有可阅读的正文快照。</p>}</article>
+              <article className="snapshot-reader" data-detail-reveal><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><DialogTitle>{snapshot?.title || item.title}</DialogTitle>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">这个收藏项还没有可阅读的正文快照。</p>}</article>
             ) : mode === "image" ? (
-              <div className="image-viewer"><CoverArt item={item} large fit="contain" /><p>{item.title}</p></div>
+              <div className="image-viewer" data-detail-reveal><CoverArt item={item} large fit="contain" /><p>{item.title}</p></div>
             ) : (
               <>
-                {item.kind !== "article" || item.cover.image || item.cover.blob ? <div className="detail-cover-wrap"><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />查看封面</Button> : null}</div> : null}
-                <div className="detail-copy">
+                {item.kind !== "article" || item.cover.image || item.cover.blob ? <div className="detail-cover-wrap" data-detail-reveal><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />查看封面</Button> : null}</div> : null}
+                <div className="detail-copy" data-detail-reveal>
                   {isEditing ? <form className="detail-inline-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
                     <Field label="标题" value={title} onChange={setTitle} />
+                    <div className="field detail-kind-field"><label>内容类型</label><SelectMenu<SavedItemKind> label="内容类型" value={kind} options={kindOptions} onChange={(nextKind) => { setKind(nextKind); setSaveError(""); }} /><small>保存后会按新类型重新进行 AI 整理；人工描述和手动调整的标签保持优先。</small></div>
                     <Field label="描述" value={description} onChange={setDescription} multiline />
                     <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
+                    {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
                     <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "保存后将锁定封面，不再被自动采集覆盖。"}</small></div><div className="cover-paste-target" tabIndex={0} role="textbox" aria-label="粘贴封面图片" aria-multiline="false" onPaste={pasteCover}>点击这里，然后按 ⌘V / Ctrl+V 粘贴图片</div>{coverPasteError ? <small role="alert">{coverPasteError}</small> : null}<input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => { setCoverBlob(event.target.files?.[0]); setCoverPasteError(""); }} /></div>
                   </form> : <>
                     <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || "暂无描述"}</p></div></div>
@@ -134,6 +165,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
           </div>
           <footer className="detail-footer">{mode === "details" && !isEditing ? <><Button size="icon" variant="ghost" aria-label="上一个收藏项" onPress={() => onNavigate(-1)}><RiArrowLeftLine size={18} /></Button><span>使用方向键切换</span><Button size="icon" variant="ghost" aria-label="下一个收藏项" onPress={() => onNavigate(1)}><RiArrowRightLine size={18} /></Button></> : <span>{isEditing ? "在当前详情中编辑，保存后立即更新" : mode === "snapshot" ? "快照保存在本地，原网页变化不会影响此内容" : "封面预览"}</span>}</footer>
         </Dialog>
+        </SmoothCorners>
       </Modal>
     </ModalOverlay>
   );

@@ -4,7 +4,7 @@ import type { SavedItemKind } from "@/src/domain/inspiration";
 export const pageAnalysisSchema = z.object({
   description: z.string().trim().max(320),
   tags: z.array(z.string().trim().min(1).max(32)).min(3).max(5).refine(
-    (tags) => new Set(tags.map((tag) => tag.normalize("NFKC").toLocaleLowerCase("zh-CN"))).size === tags.length,
+    (tags) => new Set(tags.map((tag) => tag.trim().replace(/^#/, "").normalize("NFKC"))).size === tags.length,
     "标签不能重复",
   ),
 });

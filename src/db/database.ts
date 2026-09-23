@@ -75,6 +75,38 @@ export class WanderlandDatabase extends Dexie {
       savedViews: "id,isSystem,sortOrder,updatedAt,*tagIds",
       tasks: "id,itemId,type,status,updatedAt,[status+updatedAt]",
     });
+
+    this.version(5).stores({
+      savedItems: "id,&[kind+canonicalUrl],canonicalUrl,kind,isFavorite,archivedAt,aiStatus,snapshotStatus,createdAt,updatedAt,*tagIds",
+      snapshots: "id,&itemId,capturedAt,completeness",
+      tags: "id,&normalizedName,usageCount,updatedAt",
+      savedViews: "id,isSystem,sortOrder,updatedAt,*tagIds",
+      tasks: "id,itemId,type,status,updatedAt,[status+updatedAt]",
+    }).upgrade(async (transaction) => {
+      await transaction.table<Tag, string>("tags").toCollection().modify((tag) => {
+        tag.normalizedName = tag.name.trim().replace(/^#/, "").normalize("NFKC");
+      });
+    });
+
+    this.version(6).stores({
+      savedItems: "id,&[kind+canonicalUrl],canonicalUrl,kind,isFavorite,archivedAt,aiStatus,snapshotStatus,createdAt,updatedAt,*tagIds",
+      snapshots: "id,&itemId,capturedAt,completeness",
+      tags: "id,&normalizedName,usageCount,updatedAt",
+      savedViews: "id,isSystem,sortOrder,updatedAt,*tagIds",
+      tasks: "id,itemId,type,status,updatedAt,[status+updatedAt]",
+    }).upgrade(async (transaction) => {
+      const table = transaction.table<SavedView, string>("savedViews");
+      const views = await table.toArray();
+      const defaults = views.filter((view) => view.name === "新快捷视图").sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+      const names = new Set(views.filter((view) => view.name !== "新快捷视图").map((view) => view.name));
+      let sequence = 1;
+      for (const view of defaults) {
+        while (names.has(`新快捷视图 ${sequence}`)) sequence += 1;
+        const name = `新快捷视图 ${sequence++}`;
+        await table.update(view.id, { name });
+        names.add(name);
+      }
+    });
   }
 }
 

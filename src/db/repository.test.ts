@@ -70,6 +70,32 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("undoes a batch import without removing existing items or leaving snapshots and tasks", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const existing = await repository.createSavedItem({ kind: "website", url: "https://example.com/existing" });
+    const imported = await repository.importWebsiteUrls([
+      "https://example.com/existing",
+      "https://example.com/new-one",
+      "https://example.com/new-two",
+    ]);
+    const importedIds = imported.addedItems.map((item) => item.id);
+    const firstImportedId = importedIds[0];
+    if (!firstImportedId) throw new Error("批量导入未创建收藏项");
+    await repository.completeCapture(firstImportedId, createCapture({
+      url: "https://example.com/new-one",
+      canonicalUrl: "https://example.com/new-one",
+    }));
+
+    expect(await repository.deleteSavedItems([...importedIds, firstImportedId])).toBe(2);
+    expect(await repository.deleteSavedItems(importedIds)).toBe(0);
+    expect((await database.savedItems.toArray()).map((item) => item.id)).toEqual([existing.item.id]);
+    expect(await database.snapshots.where("itemId").anyOf(importedIds).count()).toBe(0);
+    expect(await database.tasks.where("itemId").anyOf(importedIds).count()).toBe(0);
+    expect(await database.tasks.where("itemId").equals(existing.item.id).count()).toBe(2);
+    database.close();
+  });
+
   it("imports pasted URLs using the selected content type", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);
@@ -278,14 +304,14 @@ describe("InspirationRepository", () => {
     const created = await repository.createSavedItem({ kind: "article", url: "https://example.com/article" });
     await repository.updateSavedItem(created.item.id, { title: "Article", description: "", tags: ["UI", "界面"] });
     const tags = await repository.listTags();
-    const ui = tags.find((tag) => tag.name === "ui")!;
+    const ui = tags.find((tag) => tag.name === "UI")!;
     const interfaceTag = tags.find((tag) => tag.name === "界面")!;
     await repository.renameTag(ui.id, "界面");
     await repository.completeCapture(created.item.id, createCapture());
 
     expect(await database.tags.get(ui.id)).toBeUndefined();
     expect((await database.savedItems.get(created.item.id))?.tagIds).toEqual([interfaceTag.id]);
-    expect((await database.tags.get(interfaceTag.id))?.aliases).toContain("ui");
+    expect((await database.tags.get(interfaceTag.id))?.aliases).toContain("UI");
 
     await repository.deleteSavedItem(created.item.id);
     expect(await database.savedItems.count()).toBe(0);

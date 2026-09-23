@@ -11,7 +11,7 @@ interface BadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children" | 
 }
 
 export function Badge({ className, children, variant = "accent", size = "md", onPress, removable = false, ...props }: BadgeProps) {
-  const content = <><span aria-hidden="true">#</span>{children}{removable ? <RiCloseLine size={13} aria-hidden="true" /> : null}</>;
+  const content = <>{children}{removable ? <RiCloseLine size={13} aria-hidden="true" /> : null}</>;
   if (onPress) return <button type="button" className={cn("badge", `badge-${variant}`, `badge-${size}`, className)} onClick={onPress} {...props}>{content}</button>;
   return <span className={cn("badge", `badge-${variant}`, `badge-${size}`, className)} {...props}>{content}</span>;
 }

@@ -125,6 +125,7 @@ export interface LibraryItem extends SavedItem {
 }
 
 export interface UpdateSavedItemInput {
+  kind?: SavedItemKind;
   title: string;
   description: string;
   tags: string[];

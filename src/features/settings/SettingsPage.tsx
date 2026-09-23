@@ -1,6 +1,7 @@
 import { RiInformationLine, RiRefreshLine, RiShieldCheckLine } from "@remixicon/react";
+import { rise } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { endpointPermissionPattern, defaultAiSettings } from "@/src/ai/config";
 import type { AiSettings, AiSettingsView, AiTaskSummary, ApiKeyStorage } from "@/src/ai/types";
 import { aiProviderPresets } from "@/src/ai/presets";
@@ -96,7 +97,7 @@ async function importBookmarkUrls(urls: string[], enrichMetadata: boolean) {
 }
 
 function BookmarkSettings({ onImported }: { onImported?: () => void }) {
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [enrichMetadata, setEnrichMetadata] = useState(false);
@@ -118,7 +119,17 @@ function BookmarkSettings({ onImported }: { onImported?: () => void }) {
       }
       setValue("");
       setResult(`导入完成：新增 ${result.added} 个收藏项，跳过 ${result.skipped} 个已有项。`);
-      showToast(`导入完成：新增 ${result.added} 个收藏项`, { tone: "success" });
+      showUndoToast(`已添加 ${result.added} 个收藏项`, {
+        onUndo: async () => {
+          try {
+            await inspirationRepository.deleteSavedItems(result.addedItems.map((item) => item.id));
+            setResult(`已撤回本次导入的 ${result.added} 个收藏项。`);
+            showToast("已撤回批量添加", { tone: "success" });
+          } catch {
+            showToast("撤回添加失败，请稍后重试", { tone: "danger" });
+          }
+        },
+      });
       onImported?.();
     } catch {
       setError("导入未能写入本地收藏库，请重试。");
@@ -158,12 +169,12 @@ function TagsSettings() {
       <SettingsSectionHeading title="已保存标签" description="保留原名称作为别名，已有收藏项会同步更新。" />
       <SettingsCard className="tag-settings-list">
         {tags.length ? tags.map((tag) => <div className="settings-list-row" key={tag.id}>
-          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={`重命名 ${tag.name}`} /> : <div><strong>#{tag.name}</strong><span>{tag.usageCount} 个收藏项{tag.aliases.length ? ` · 别名 ${tag.aliases.join("、")}` : ""}</span></div>}
+          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={`重命名 ${tag.name}`} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount} 个收藏项{tag.aliases.length ? ` · 别名 ${tag.aliases.join("、")}` : ""}</span></div>}
           <div className="settings-list-actions">{editingId === tag.id ? <Button size="sm" variant="primary" onPress={() => void save(tag.id)}>保存</Button> : <Button size="sm" variant="secondary" onPress={() => { setEditingId(tag.id); setName(tag.name); setDeleteId(undefined); }}>重命名</Button>}<Button size="sm" variant="dangerGhost" onPress={() => setDeleteId(tag.id)}>删除</Button></div>
         </div>) : <div className="settings-empty-row">还没有标签。可在收藏项详情中添加。</div>}
       </SettingsCard>
     </section>
-  </div><ConfirmDialog isOpen={Boolean(deleteTag)} title="删除标签？" description={deleteTag ? `这将从收藏项中移除“#${deleteTag.name}”，此操作无法撤销。` : ""} onClose={() => setDeleteId(undefined)} onConfirm={() => deleteTag ? deleteTagItem(deleteTag.id) : undefined} /></>;
+  </div><ConfirmDialog isOpen={Boolean(deleteTag)} title="删除标签？" description={deleteTag ? `这将从收藏项中移除“${deleteTag.name}”，此操作无法撤销。` : ""} onClose={() => setDeleteId(undefined)} onConfirm={() => deleteTag ? deleteTagItem(deleteTag.id) : undefined} /></>;
 }
 
 function AiSettings() {
@@ -302,9 +313,23 @@ function BackupSettings() {
 function formatArchivedAt(timestamp: number) { return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(timestamp); }
 
 function ArchiveSettings() {
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const items = useLiveQuery(async () => (await inspirationRepository.listLibraryItems()).filter((item) => item.archivedAt).sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)), []) ?? [];
-  const restoreItem = async (id: string) => { await inspirationRepository.setArchived(id, false); showToast("已取消归档", { tone: "success" }); };
+  const restoreItem = async (id: string) => {
+    const item = items.find((candidate) => candidate.id === id);
+    await inspirationRepository.setArchived(id, false);
+    showUndoToast("已取消归档", {
+      subject: item?.title,
+      onUndo: async () => {
+        try {
+          await inspirationRepository.setArchived(id, true);
+          showToast("已恢复归档", { tone: "success" });
+        } catch {
+          showToast("撤回取消归档失败，请稍后重试", { tone: "danger" });
+        }
+      },
+    });
+  };
   const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
     try {
       const restored = await inspirationRepository.restoreSavedItem(deleted);
@@ -316,7 +341,7 @@ function ArchiveSettings() {
   const deleteArchivedItem = async (id: string) => {
     const deleted = await inspirationRepository.deleteSavedItem(id);
     if (!deleted) return;
-    showToast("收藏项已删除", { tone: "success", duration: 5000, action: { label: "撤回", onPress: () => restoreDeletedItem(deleted) } });
+    showUndoToast("已删除收藏项", { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
   };
   return <div className="settings-form"><SettingsHeader title="归档" description="归档项不会出现在收藏库中，可随时恢复或永久删除。" /><section className="settings-form-section"><SettingsSectionHeading title="已归档内容" description="恢复后会回到原来的收藏库范围。" /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatArchivedAt(item.archivedAt!)}</span></div><div className="settings-list-actions"><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>删除</Button><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>取消归档</Button></div></article>) : <div className="settings-empty-row">还没有归档内容。</div>}</SettingsCard></section></div>;
 }
@@ -325,18 +350,27 @@ function PlaceholderSettings({ section }: { section: "appearance" | "digest" | "
   const data = {
     appearance: { title: "外观", description: "调整工作台的显示方式。", body: "外观设置将在后续版本开放。" },
     digest: { title: "内容简报", description: "把收藏库整理成可回顾的内容简报。", body: "内容简报将在后续版本开放。" },
-    about: { title: "关于Webloom", description: "了解当前版本与本地优先的数据边界。", body: "Wanderland v0.6.7 · 数据只保存在当前浏览器。" },
+    about: { title: "关于Webloom", description: "了解当前版本与本地优先的数据边界。", body: "Wanderland v0.6.8 · 数据只保存在当前浏览器。" },
   }[section];
   return <div className="settings-form"><SettingsHeader title={data.title} description={data.description} /><section className="settings-form-section"><SettingsSectionHeading title={data.title} description={data.description} /><SettingsCard><SettingsRow title={data.title} description={data.body} control={<RiInformationLine size={20} aria-hidden="true" />} /></SettingsCard></section></div>;
 }
 
 export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void }) {
   const [section, setSection] = useState<SettingsSection>("bookmarks");
+  const contentRef = useRef<HTMLDivElement>(null);
+  const riseAnimations = useRef<Animation[]>([]);
   const items = useLiveQuery(() => inspirationRepository.listLibraryItems(), []) ?? [];
   const views = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []) ?? [];
   const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : <PlaceholderSettings section={section} />;
 
+  useLayoutEffect(() => {
+    riseAnimations.current.forEach((animation) => animation.cancel());
+    if (contentRef.current) riseAnimations.current = rise(contentRef.current);
+  }, [section]);
+
+  useEffect(() => () => riseAnimations.current.forEach((animation) => animation.cancel()), []);
+
   return <AppShell items={items} activeScope="all" activeSavedView={null} savedViews={views} onScopeChange={() => undefined} onSavedViewChange={() => undefined} onSavedViewRename={() => undefined} onSavedViewDelete={() => undefined} onSavedViewMove={() => undefined} mode="settings" activeSettingsSection={section} onSettingsSectionChange={setSection} onBackToLibrary={onBackToLibrary}>
-    <div className="settings-page"><div className="settings-page-content">{sectionContent}</div></div>
+    <div className="settings-page"><div ref={contentRef} className="settings-page-content">{sectionContent}</div></div>
   </AppShell>;
 }

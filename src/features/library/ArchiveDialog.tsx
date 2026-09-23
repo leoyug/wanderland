@@ -16,14 +16,25 @@ function formatArchivedAt(timestamp: number) {
 }
 
 export function ArchiveDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const items = useLiveQuery(
     async () => (await inspirationRepository.listLibraryItems()).filter((item) => item.archivedAt).sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)),
     [],
   ) ?? [];
   const restoreItem = async (id: string) => {
+    const item = items.find((candidate) => candidate.id === id);
     await inspirationRepository.setArchived(id, false);
-    showToast("已取消归档", { tone: "success" });
+    showUndoToast("已取消归档", {
+      subject: item?.title,
+      onUndo: async () => {
+        try {
+          await inspirationRepository.setArchived(id, true);
+          showToast("已恢复归档", { tone: "success" });
+        } catch {
+          showToast("撤回取消归档失败，请稍后重试", { tone: "danger" });
+        }
+      },
+    });
   };
   const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
     try {
@@ -36,7 +47,7 @@ export function ArchiveDialog({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const deleteArchivedItem = async (id: string) => {
     const deleted = await inspirationRepository.deleteSavedItem(id);
     if (!deleted) return;
-    showToast("收藏项已删除", { tone: "success", duration: 5000, action: { label: "撤回", onPress: () => restoreDeletedItem(deleted) } });
+    showUndoToast("已删除收藏项", { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
   };
 
   return (

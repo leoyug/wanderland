@@ -12,6 +12,7 @@ WXT
 React + TypeScript
 Tailwind CSS v4 + Intent UI + React Aria Components
 liquid-gooey
+@lisse/react
 Dexie + IndexedDB
 Mozilla Readability + DOMPurify
 MiniSearch + Intl.Segmenter
@@ -34,6 +35,8 @@ pnpm + Biome
 | UI 组件 | Intent UI（源码归属项目） | 通过 shadcn registry 按需复制 Sidebar、SearchField、Tag Group、Modal、Menu 等组件 |
 | 交互原语 | React Aria Components | 为 Intent UI 和项目自定义交互提供可访问性、键盘导航、国际化与焦点管理 |
 | 添加入口动效 | liquid-gooey | 为三个真实 DOM 按钮提供克制的液态展开形变，并继承 reduced-motion |
+| 局部内容动效 | cube-motion | 设置功能切换使用 `rise`，收藏项详情滚动内容使用 `reveal`；不接管 React Aria Modal 的开关与焦点管理 |
+| 平滑圆角 | @lisse/react + Chromium `corner-shape` | 卡片与详情使用 Lisse 精确曲线；其他表面按 Lisse `0.6` 的视觉延展放大原生半径，使阴影、描边及焦点保持完整，旧浏览器使用原半径回退 |
 | 主数据库 | IndexedDB + Dexie | 保存卡片、内容类型、星标、标签、正文和图片 Blob |
 | 小型配置 | `chrome.storage.local` | 保存主题、界面偏好和 AI 配置 |
 | 正文提取 | `@mozilla/readability` | 从当前 DOM 中提取可阅读正文 |
@@ -73,7 +76,7 @@ Intent UI 当前 registry 是共享 UI 组件的首选结构来源。组件通�
 | `Switch` | Switch | 使用 `SwitchField + SwitchButton`，覆盖开关、焦点和禁用态 |
 | `RadioGroup` | Radio Group | 用于互斥选项，不用 checkbox 或 Switch 代替 |
 | `SegmentedControl` | Toggle Group | 使用单选 `ToggleButtonGroup` 表达布局和模式切换 |
-| `Badge` | Badge | 保留 `#` 前缀和标签语义色 |
+| `Badge` | Badge | 使用无 `#` 前缀的标签名称和标签语义色 |
 | `Card` | Card | 作为无业务语义的基础表面，领域卡片另行组合 |
 | `FacetFilter` | Popover + Search Field + Checkbox | 保留多选筛选、数量和清除操作 |
 | 侧栏设置入口 | Menu | 锚定在侧栏设置按钮上方，具体任务再打开对应 Modal |
@@ -166,7 +169,7 @@ MiniSearch 索引可以从 Dexie 重建，不是业务数据源。建议权重�
 5. 将克隆的 Document 交给 Mozilla Readability。
 6. 使用 DOMPurify 清理提取出的 HTML。
 7. 将 `cleanText` 和 `cleanHtml` 保存至 IndexedDB。
-8. 按“用户描述 → 网页描述 → AI 总结”的优先级确定最终描述，同时异步生成标签；固定内容类型和用户描述不被 AI 覆盖。
+8. 按“用户描述 → 网页描述 → AI 总结”的优先级确定最终描述，同时异步生成标签；AI 不覆盖用户描述、人工调整的标签或用户选择的内容类型。用户在详情中切换内容类型时，repository 在同一事务中更新类型、刷新自动生成的标签并持久化新的 AI 任务，后台按新类型重新处理。
 
 收藏项保存 `description` 与 `descriptionSource`。`descriptionSource` 取 `user | page | ai`，用于后台合并时保护用户输入，不作为卡片或列表中的额外展示信息。标签采集、生成、编辑和筛选流程保持不变。
 
@@ -291,7 +294,7 @@ V1 不引入 Redux。如果后续出现大量跨页面临时状态，再评估 Z
 
 - URL 规范化与去重。
 - 固定内容类型、星标和快捷视图组合过滤。
-- 标签归一化和近义词合并。
+- 标签名称保留大小写并区分身份，搜索忽略大小写；近义词仍按语义合并。
 - Dexie Schema 升级。
 - Readability 提取与快照完整性判定。
 - MiniSearch 中英文分词和字段权重。

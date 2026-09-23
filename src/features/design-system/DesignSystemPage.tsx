@@ -16,6 +16,7 @@ import { SegmentedControl } from "@/src/components/ui/SegmentedControl";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { SelectedTagBar } from "@/src/components/ui/SelectedTagBar";
 import { Switch } from "@/src/components/ui/Switch";
+import { useToast } from "@/src/components/ui/Toast";
 import { inspirationItems } from "@/src/data/demo";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 
@@ -32,9 +33,11 @@ const colors = [
   { name: "主色背景 10%", token: "--color-accent-primary-bg", value: "#FF760E · 10%" },
   { name: "主色描边 20%", token: "--color-accent-primary-border", value: "#FF760E · 20%" },
   { name: "滚动条", token: "--color-scrollbar-thumb", value: "#DEDEDE" },
-  { name: "成功", token: "--color-success", value: "#3B6D53" },
-  { name: "提示", token: "--color-info", value: "#356A96" },
-  { name: "危险", token: "--color-danger", value: "#FF5252" },
+  { name: "成功", token: "--color-success", value: "#00C0A5" },
+  { name: "信息", token: "--color-info", value: "#347BFF" },
+  { name: "警告", token: "--color-warning", value: "#FF8F00" },
+  { name: "错误", token: "--color-danger", value: "#FF575B" },
+  { name: "等待", token: "--color-waiting", value: "#FFC300" },
 ];
 
 const layoutOptions = [
@@ -53,6 +56,7 @@ function PreviewSection({ title, description, children }: { title: string; descr
 }
 
 export function DesignSystemPage({ onBack }: { onBack: () => void }) {
+  const { showToast, showUndoToast, updateToast } = useToast();
   const [previewViews, setPreviewViews] = useState<LibrarySavedView[]>([
     { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article", tagIds: [], tags: [], sortOrder: 0, createdAt: 0, updatedAt: 0 },
     { id: "preview-design", name: "设计灵感", isSystem: false, scope: "website", tagIds: ["design"], tags: ["设计灵感"], sortOrder: 1, createdAt: 0, updatedAt: 0 },
@@ -63,6 +67,10 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
   const [previewSort, setPreviewSort] = useState<"newest" | "oldest">("newest");
   const [previewSwitch, setPreviewSwitch] = useState(true);
   const [previewStorage, setPreviewStorage] = useState<"session" | "local">("session");
+  const previewLoadingToast = () => {
+    const id = showToast("正在整理收藏项", { description: "AI 正在生成描述与标签。", isLoading: true });
+    window.setTimeout(() => updateToast(id, "整理完成", { description: "描述与标签已更新。", tone: "success", isLoading: false }), 1200);
+  };
   const movePreviewView = (sourceId: string, targetId: string) => {
     setPreviewViews((current) => {
       const system = current.filter((view) => view.isSystem);
@@ -114,7 +122,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
               <Switch label="停用状态" isDisabled />
               <RadioGroup className="ai-key-storage" label="保存方式" value={previewStorage} onChange={setPreviewStorage} options={[{ value: "session", label: "仅当前会话" }, { value: "local", label: "本地浏览器" }]} />
               <Badge>产品设计</Badge><Badge variant="neutral">React Aria</Badge>
-              <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={[{ id: "design", label: "#设计", count: 15 }, { id: "react", label: "#React", count: 8 }, { id: "motion", label: "#动效", count: 6 }]} selectedValues={previewTags} onChange={setPreviewTags} searchable searchPlaceholder="搜索标签" />
+              <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={[{ id: "design", label: "设计", count: 15 }, { id: "react", label: "React", count: 8 }, { id: "motion", label: "动效", count: 6 }]} selectedValues={previewTags} onChange={setPreviewTags} searchable searchPlaceholder="搜索标签" />
               <SelectMenu label="排序方式" value={previewSort} options={[{ value: "newest", label: "最新" }, { value: "oldest", label: "最旧" }]} onChange={setPreviewSort} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} />
               <SegmentedControl label="布局示例" value="grid" options={layoutOptions} onChange={() => undefined} />
             </div>
@@ -154,6 +162,24 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
 
         <PreviewSection title="添加入口" description="悬停、聚焦或点击主按钮后，展开带背景模糊的内容类型菜单，文字保持在按钮点击区域内。">
           <FloatingAddMenu placement="preview" onSelect={() => undefined} />
+        </PreviewSection>
+
+        <PreviewSection title="Toast 通知" description="顶部通知支持标题、补充说明、操作、队列、异步状态更新与持续型通知关闭；悬停、聚焦和页面进入后台时暂停计时。">
+          <div className="component-stack">
+            <div className="component-row">
+              <Button variant="secondary" onPress={() => showToast("链接已复制", { tone: "neutral" })}>默认</Button>
+              <Button variant="secondary" onPress={() => showToast("发现新的版本", { description: "重新打开工作台后即可使用。", tone: "info" })}>提示</Button>
+              <Button variant="secondary" onPress={() => showToast("操作已完成", { tone: "success" })}>成功</Button>
+              <Button variant="secondary" onPress={() => showToast("部分网站未补全", { description: "收藏已保存，可稍后重新整理。", tone: "warning" })}>警告</Button>
+              <Button variant="secondary" onPress={() => showToast("复制链接失败", { description: "请检查浏览器剪贴板权限后重试。", tone: "danger" })}>错误</Button>
+            </div>
+            <div className="component-row">
+              <Button variant="secondary" onPress={() => showToast("已应用筛选", { action: { label: "查看", onPress: () => { showToast("当前正在查看筛选结果", { tone: "info" }); } } })}>普通操作</Button>
+              <Button variant="secondary" onPress={() => showUndoToast("已删除收藏项", { subject: "Rows is an unapologetically creative design collection", onUndo: () => { showToast("已撤回删除", { tone: "success" }); } })}>删除撤回</Button>
+              <Button variant="secondary" onPress={() => showUndoToast("已添加 4 个收藏项", { onUndo: () => { showToast("已撤回批量添加", { tone: "success" }); } })}>批量撤回</Button>
+              <Button variant="secondary" onPress={previewLoadingToast}>异步状态</Button>
+            </div>
+          </div>
         </PreviewSection>
 
         <PreviewSection title="布局与反馈" description="面板靠色调和间距分层；关键反馈同时使用图标与文字。">

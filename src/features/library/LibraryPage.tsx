@@ -58,7 +58,7 @@ function readInitialState() {
 }
 
 export function LibraryPage() {
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const initialState = useMemo(readInitialState, []);
   const liveItems = useLiveQuery(() => inspirationRepository.listLibraryItems(), []);
   const liveViews = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []);
@@ -173,8 +173,19 @@ export function LibraryPage() {
     }
   };
   const archiveItem = async (id: string, archived: boolean) => {
+    const item = items.find((candidate) => candidate.id === id);
     await inspirationRepository.setArchived(id, archived);
-    showToast(archived ? "收藏项已归档" : "已取消归档", { tone: "success" });
+    showUndoToast(archived ? "已归档收藏项" : "已取消归档", {
+      subject: item?.title,
+      onUndo: async () => {
+        try {
+          await inspirationRepository.setArchived(id, !archived);
+          showToast(archived ? "已撤回归档" : "已恢复归档", { tone: "success" });
+        } catch {
+          showToast("撤回归档失败，请稍后重试", { tone: "danger" });
+        }
+      },
+    });
   };
   const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
     try {
@@ -187,11 +198,24 @@ export function LibraryPage() {
   const deleteItem = async (id: string) => {
     const deleted = await inspirationRepository.deleteSavedItem(id);
     if (!deleted) return;
-    showToast("收藏项已删除", { tone: "success", duration: 5000, action: { label: "撤回", onPress: () => restoreDeletedItem(deleted) } });
+    showUndoToast("已删除收藏项", { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
+  };
+  const undoAddedItems = async (ids: string[]) => {
+    try {
+      await inspirationRepository.deleteSavedItems(ids);
+      showToast(ids.length === 1 ? "已撤回添加" : "已撤回批量添加", { tone: "success" });
+    } catch {
+      showToast("撤回添加失败，请稍后重试", { tone: "danger" });
+    }
   };
   const updateItem = async (input: UpdateSavedItemInput) => {
     if (!selectedItem) return;
-    await inspirationRepository.updateSavedItem(selectedItem.id, input);
+    const kindChanged = await inspirationRepository.updateSavedItem(selectedItem.id, input);
+    if (kindChanged) {
+      void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
+      showToast("内容类型已更改，AI 整理已重新排队", { tone: "info" });
+      return;
+    }
     showToast("修改已保存", { tone: "success" });
   };
 
@@ -240,7 +264,8 @@ export function LibraryPage() {
     }
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     changeScope(kind);
-    showToast("收藏项已添加", { tone: "success" });
+    const addedItem = await inspirationRepository.getSavedItem(result.item.id);
+    showUndoToast("已添加收藏项", { subject: addedItem?.title ?? result.item.title, onUndo: () => undoAddedItems([result.item.id]) });
     return true;
   }
 
@@ -272,7 +297,7 @@ export function LibraryPage() {
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
       changeScope(kind);
-      showToast(`导入完成：新增 ${result.added} 个收藏项`, { tone: "success" });
+      showUndoToast(`已添加 ${result.added} 个收藏项`, { onUndo: () => undoAddedItems(result.addedItems.map((item) => item.id)) });
     }
     return result;
   }
@@ -314,7 +339,7 @@ export function LibraryPage() {
             <div className="toolbar-left">
               <div className="view-heading"><strong>{viewTitle}</strong><span>{visibleItems.length}</span></div>
               <div className="facet-filter-bar" aria-label="内容筛选">
-                <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={allTags.map((tag) => ({ id: tag.name, label: `#${tag.name}`, count: tag.count }))} selectedValues={selectedTags} onChange={(values) => { setSelectedTags(values); setActiveSavedView(null); }} searchable searchPlaceholder="搜索标签" />
+                <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={allTags.map((tag) => ({ id: tag.name, label: tag.name, count: tag.count }))} selectedValues={selectedTags} onChange={(values) => { setSelectedTags(values); setActiveSavedView(null); }} searchable searchPlaceholder="搜索标签" />
               </div>
             </div>
             <div className="toolbar-right">

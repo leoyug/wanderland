@@ -27,14 +27,14 @@ export function TagInput({ label, tags, options, onChange, placement = "auto", r
   const [activeIndex, setActiveIndex] = useState(-1);
   const [hoveredIndex, setHoveredIndex] = useState(-1);
   const [popoverStyle, setPopoverStyle] = useState<{ left: number; top: number; width: number; maxHeight: number }>();
-  const available = useMemo(() => options.filter((option) => !tags.some((tag) => tag.toLocaleLowerCase("zh-CN") === option.name.toLocaleLowerCase("zh-CN"))), [options, tags]);
+  const available = useMemo(() => options.filter((option) => !tags.some((tag) => normalize(tag) === option.name)), [options, tags]);
   const recent = useMemo(() => [...available].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4), [available]);
   const matches = useMemo(() => {
     const needle = normalize(query).toLocaleLowerCase("zh-CN");
     return needle ? available.filter((option) => option.name.toLocaleLowerCase("zh-CN").includes(needle)) : [];
   }, [available, query]);
-  const canCreate = Boolean(normalize(query)) && !options.some((option) => option.name.toLocaleLowerCase("zh-CN") === normalize(query).toLocaleLowerCase("zh-CN"));
-  const actionable = query.trim() ? [...matches.map((tag) => tag.name), ...(canCreate ? [normalize(query)] : [])] : [...recent.map((tag) => tag.name), ...available.map((tag) => tag.name)];
+  const canCreate = Boolean(normalize(query)) && !options.some((option) => normalize(option.name) === normalize(query));
+  const actionable = query.trim() ? [...(canCreate ? [normalize(query)] : []), ...matches.map((tag) => tag.name)] : [...recent.map((tag) => tag.name), ...available.map((tag) => tag.name)];
   const portalHost = rootRef.current?.closest(".detail-modal")
     ?? rootRef.current?.closest(".capture-overlay-root")
     ?? document.body;
@@ -138,17 +138,20 @@ export function TagInput({ label, tags, options, onChange, placement = "auto", r
   return <div className="tag-input" ref={rootRef} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node)) closeMenu(); }}>
     <span className="tag-input-label">{label}</span>
     <div className="tag-input-control" onClick={() => inputRef.current?.focus()}>
-      {tags.map((tag) => <button key={tag} type="button" className="tag-input-chip" onClick={(event) => { event.stopPropagation(); onChange(tags.filter((item) => item !== tag)); }}>#{tag}<RiCloseLine size={13} /></button>)}
+      {tags.map((tag) => <button key={tag} type="button" className="tag-input-chip" onClick={(event) => { event.stopPropagation(); onChange(tags.filter((item) => item !== tag)); }}>{tag}<RiCloseLine size={13} /></button>)}
       <input ref={inputRef} autoFocus={autoFocus} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
     </div>
     {open && popoverStyle ? createPortal(<div ref={popoverRef} className="tag-input-popover" id="tag-input-listbox" role="listbox" style={popoverStyle} onMouseLeave={() => setHoveredIndex(-1)}>
       {query.trim() ? <>
-        {matches.map((tag, index) => <button key={tag.id} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>#{tag.name}</button>)}
-        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === matches.length} className={activeIndex === matches.length ? "is-active" : hoveredIndex === matches.length ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(matches.length)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>创建“{normalize(query)}”</button> : null}
+        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === 0} className={activeIndex === 0 ? "is-active" : hoveredIndex === 0 ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(0)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>创建新标签“{normalize(query)}”</button> : null}
+        {matches.map((tag, index) => {
+          const optionIndex = index + (canCreate ? 1 : 0);
+          return <button key={tag.id} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>;
+        })}
         {!matches.length && !canCreate ? <p>没有可添加的标签</p> : null}
       </> : <>
-        {recent.length ? <><span>最近使用</span>{recent.map((tag, index) => <button key={`recent-${tag.id}`} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>#{tag.name}</button>)}</> : null}
-        {available.length ? <><span>所有标签</span>{available.map((tag, index) => { const optionIndex = recent.length + index; return <button key={`all-${tag.id}`} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>#{tag.name}</button>; })}</> : <p>暂无已有标签，输入文字即可创建</p>}
+        {recent.length ? <><span>最近使用</span>{recent.map((tag, index) => <button key={`recent-${tag.id}`} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>)}</> : null}
+        {available.length ? <><span>所有标签</span>{available.map((tag, index) => { const optionIndex = recent.length + index; return <button key={`all-${tag.id}`} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>; })}</> : <p>暂无已有标签，输入文字即可创建</p>}
       </>}
     </div>, portalHost) : null}
   </div>;

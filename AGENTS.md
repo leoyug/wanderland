@@ -54,7 +54,7 @@ src/
 
 工作台侧栏是例外：导航图标使用 `public/assets/sidebar/` 中从 Figma `V0.1.1` 导出的原始 SVG，并统一通过 `SidebarIcon` 渲染。不得用相似 Remix 图标替换这些已确认的品牌界面资产。
 
-英文与数字统一使用项目内置的 `Geist Mono Variable`；中文由 `PingFang SC` 回退，品牌字标使用紧缩粗体字体栈。标签必须通过共享 `Badge` 组件渲染，保留 `#` 前缀，并使用设计系统的 `tag-text` / `tag-surface` token。侧栏选中态复用同一组标签色，禁止页面内自行写近似橙色。
+英文与数字统一使用项目内置的 `Geist Mono Variable`；中文由 `PingFang SC` 回退，品牌字标使用紧缩粗体字体栈。标签必须通过共享 `Badge` 组件渲染，不显示 `#` 前缀，并使用设计系统的 `tag-text` / `tag-surface` token。侧栏选中态复用同一组标签色，禁止页面内自行写近似橙色。
 
 页面与 feature 负责数据编排和用户流程，不复制基础控件样式。新增颜色、圆角、阴影或交互状态前，必须先检查 `DESIGN.md` 和现有 token 是否已有对应语义。
 

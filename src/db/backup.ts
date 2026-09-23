@@ -84,13 +84,15 @@ export async function restoreBackup(backup: Backup, database: WanderlandDatabase
     const usedIds = new Set([...existingItems, ...existingTags, ...existingViews, ...existingTasks, ...existingSnapshots].map((record) => record.id));
     const nextId = (id: string) => { let result = id; while (usedIds.has(result)) result = `${id}-${crypto.randomUUID()}`; usedIds.add(result); return result; };
     const tagMap = new Map<string, string>();
-    const tagsByName = new Map(existingTags.map((tag) => [tag.normalizedName, tag.id]));
+    const identityFor = (name: string) => name.trim().replace(/^#/, "").normalize("NFKC");
+    const tagsByName = new Map(existingTags.map((tag) => [identityFor(tag.name), tag.id]));
     const tagsToAdd: Tag[] = [];
     for (const tag of valid.tags) {
-      const existing = tagsByName.get(tag.normalizedName);
+      const normalizedName = identityFor(tag.name);
+      const existing = tagsByName.get(normalizedName);
       const id = existing ?? nextId(tag.id);
       tagMap.set(tag.id, id);
-      if (!existing) { tagsToAdd.push({ ...tag, id, usageCount: 0 }); tagsByName.set(tag.normalizedName, id); }
+      if (!existing) { tagsToAdd.push({ ...tag, id, normalizedName, usageCount: 0 }); tagsByName.set(normalizedName, id); }
     }
     const existingKeys = new Set(existingItems.map((item) => `${item.kind}\0${item.canonicalUrl}`));
     const itemMap = new Map<string, string>();
@@ -107,14 +109,22 @@ export async function restoreBackup(backup: Backup, database: WanderlandDatabase
     const snapshotsToAdd: Snapshot[] = valid.snapshots.filter((snapshot) => itemMap.has(snapshot.itemId)).map((snapshot) => ({ ...snapshot, id: snapshotMap.get(snapshot.id)!, itemId: itemMap.get(snapshot.itemId)!, cleanHtml: DOMPurify.sanitize(snapshot.cleanHtml) }) as Snapshot);
     const tasksToAdd: PersistentTask[] = valid.tasks.filter((task) => itemMap.has(task.itemId)).map((task) => ({ ...task, lastError: undefined, id: nextId(task.id), itemId: itemMap.get(task.itemId)!, status: task.status === "running" ? "pending" : task.status }) as PersistentTask);
     const viewKeys = new Set(existingViews.map((view) => `${view.name}\0${view.scope}\0${[...view.tagIds].sort().join(",")}`));
+    const viewNames = new Set(existingViews.map((view) => view.name));
     const viewsToAdd: SavedView[] = [];
     for (const view of valid.savedViews) {
       if (view.isSystem) continue;
       const mappedTagIds = view.tagIds.map((tagId) => tagMap.get(tagId)!);
-      const key = `${view.name}\0${view.scope}\0${[...mappedTagIds].sort().join(",")}`;
+      let name = view.name;
+      if (name === "新快捷视图") {
+        let sequence = 1;
+        while (viewNames.has(`${name} ${sequence}`)) sequence += 1;
+        name = `${name} ${sequence}`;
+      }
+      const key = `${name}\0${view.scope}\0${[...mappedTagIds].sort().join(",")}`;
       if (viewKeys.has(key)) continue;
-      viewsToAdd.push({ ...view, id: nextId(view.id), tagIds: mappedTagIds });
+      viewsToAdd.push({ ...view, name, id: nextId(view.id), tagIds: mappedTagIds });
       viewKeys.add(key);
+      viewNames.add(name);
     }
     await database.tags.bulkAdd(tagsToAdd);
     await database.savedItems.bulkAdd(itemsToAdd);

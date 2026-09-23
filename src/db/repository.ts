@@ -30,7 +30,7 @@ function formatSavedAt(timestamp: number) {
 }
 
 function normalizeTagName(name: string) {
-  return name.trim().replace(/^#/, "").normalize("NFKC").toLocaleLowerCase("zh-CN");
+  return name.trim().replace(/^#/, "").normalize("NFKC");
 }
 
 export interface CreateSavedItemResult {
@@ -116,9 +116,15 @@ export class InspirationRepository {
     if (!title) throw new Error("标题不能为空");
     const normalizedNames = [...new Set(input.tags.map(normalizeTagName).filter(Boolean))];
     const now = Date.now();
-    await this.database.transaction("rw", this.database.savedItems, this.database.tags, async () => {
+    return this.database.transaction("rw", this.database.savedItems, this.database.tags, this.database.tasks, async () => {
       const item = await this.database.savedItems.get(itemId);
       if (!item) throw new Error("收藏项不存在");
+      const nextKind = input.kind ?? item.kind;
+      const kindChanged = nextKind !== item.kind;
+      if (kindChanged) {
+        const collision = await this.database.savedItems.where("[kind+canonicalUrl]").equals([nextKind, item.canonicalUrl]).first();
+        if (collision && collision.id !== itemId) throw new Error(`该链接已经有“${kindLabels[nextKind]}”类型的收藏项，无法再次改成此类型。`);
+      }
       const existingTags = normalizedNames.length
         ? await this.database.tags.where("normalizedName").anyOf(normalizedNames).toArray()
         : [];
@@ -128,21 +134,43 @@ export class InspirationRepository {
       }));
       if (createdTags.length) await this.database.tags.bulkAdd(createdTags);
       createdTags.forEach((tag) => existingByName.set(tag.normalizedName, tag));
-      const nextTagIds = normalizedNames.flatMap((name) => existingByName.get(name)?.id ?? []);
+      const requestedTagIds = normalizedNames.flatMap((name) => existingByName.get(name)?.id ?? []);
+      const tagsChanged = item.tagIds.length !== requestedTagIds.length || item.tagIds.some((tagId) => !requestedTagIds.includes(tagId));
+      const nextTagIds = kindChanged && !item.tagsEditedAt && !tagsChanged ? [] : requestedTagIds;
       const affectedIds = new Set([...item.tagIds, ...nextTagIds]);
       await this.database.savedItems.update(itemId, {
+        kind: nextKind,
         title,
         description: input.description.trim(),
         descriptionSource: input.descriptionEdited === false ? item.descriptionSource : input.description.trim() ? "user" : undefined,
         tagIds: nextTagIds,
-        tagsEditedAt: now,
-        cover: input.coverBlob ? { ...item.cover, image: undefined, blob: input.coverBlob, isUserSelected: true } : item.cover,
+        tagsEditedAt: tagsChanged ? now : item.tagsEditedAt,
+        cover: input.coverBlob
+          ? { ...item.cover, image: undefined, blob: input.coverBlob, isUserSelected: true }
+          : kindChanged
+            ? { ...item.cover, label: kindLabels[nextKind], motif: nextKind === "follow" ? "orb" : "type" }
+            : item.cover,
+        aiStatus: kindChanged ? "pending" : item.aiStatus,
         updatedAt: now,
       });
+      if (kindChanged) {
+        const aiTasks = await this.database.tasks.where("itemId").equals(itemId).and((task) => task.type === "ai").toArray();
+        if (aiTasks.length) await this.database.tasks.bulkDelete(aiTasks.map((task) => task.id));
+        await this.database.tasks.add({
+          id: createId("task"),
+          itemId,
+          type: "ai",
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       for (const tagId of affectedIds) {
         const usageCount = await this.database.savedItems.where("tagIds").equals(tagId).count();
         await this.database.tags.update(tagId, { usageCount, updatedAt: now });
       }
+      return kindChanged;
     });
   }
 
@@ -162,6 +190,27 @@ export class InspirationRepository {
         await this.database.tags.update(tagId, { usageCount, updatedAt: Date.now() });
       }
       return { item, snapshots, tasks };
+    });
+  }
+
+  async deleteSavedItems(itemIds: string[]): Promise<number> {
+    const ids = [...new Set(itemIds)];
+    if (ids.length === 0) return 0;
+    return this.database.transaction("rw", this.database.savedItems, this.database.snapshots, this.database.tasks, this.database.tags, async () => {
+      const items = (await this.database.savedItems.bulkGet(ids)).filter((item): item is SavedItem => Boolean(item));
+      if (items.length === 0) return 0;
+      const existingIds = items.map((item) => item.id);
+      await Promise.all([
+        this.database.savedItems.bulkDelete(existingIds),
+        this.database.snapshots.where("itemId").anyOf(existingIds).delete(),
+        this.database.tasks.where("itemId").anyOf(existingIds).delete(),
+      ]);
+      const now = Date.now();
+      for (const tagId of new Set(items.flatMap((item) => item.tagIds))) {
+        const usageCount = await this.database.savedItems.where("tagIds").equals(tagId).count();
+        await this.database.tags.update(tagId, { usageCount, updatedAt: now });
+      }
+      return items.length;
     });
   }
 
@@ -190,7 +239,7 @@ export class InspirationRepository {
     if (!tag) throw new Error("标签不存在");
     const collision = await this.database.tags.where("normalizedName").equals(normalizedName).first();
     if (collision && collision.id !== tagId) return this.mergeTags(tagId, collision.id);
-    await this.database.tags.update(tagId, { name: name.trim().replace(/^#/, ""), normalizedName, updatedAt: Date.now() });
+    await this.database.tags.update(tagId, { name: normalizedName, normalizedName, updatedAt: Date.now() });
   }
 
   async mergeTags(sourceId: string, targetId: string) {
@@ -480,10 +529,10 @@ export class InspirationRepository {
   }
 
   async markAiStarted(taskId: string) {
-    const task = await this.database.tasks.get(taskId);
-    if (!task || task.type !== "ai") throw new Error("AI 任务不存在");
     const now = Date.now();
-    await this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+    return this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+      const task = await this.database.tasks.get(taskId);
+      if (!task || task.type !== "ai") return false;
       await this.database.tasks.update(task.id, {
         status: "running",
         attempts: task.attempts + 1,
@@ -492,6 +541,7 @@ export class InspirationRepository {
         updatedAt: now,
       });
       await this.database.savedItems.update(task.itemId, { aiStatus: "pending", updatedAt: now });
+      return true;
     });
   }
 
@@ -545,11 +595,11 @@ export class InspirationRepository {
   }
 
   async failAiTask(taskId: string, reason: string, retryable: boolean) {
-    const task = await this.database.tasks.get(taskId);
-    if (!task || task.type !== "ai") return;
     const now = Date.now();
-    const attempts = Math.max(1, task.attempts);
     await this.database.transaction("rw", this.database.tasks, this.database.savedItems, async () => {
+      const task = await this.database.tasks.get(taskId);
+      if (!task || task.type !== "ai") return;
+      const attempts = Math.max(1, task.attempts);
       await this.database.tasks.update(task.id, {
         status: "failed",
         lastError: reason,
@@ -629,23 +679,34 @@ export class InspirationRepository {
 
   async createSavedView(input: { name: string; scope: SavedView["scope"]; tags: string[] }) {
     const normalizedTags = input.tags.map(normalizeTagName);
-    const tags = normalizedTags.length
-      ? await this.database.tags.where("normalizedName").anyOf(normalizedTags).toArray()
-      : [];
-    const last = await this.database.savedViews.orderBy("sortOrder").last();
-    const now = Date.now();
-    const view: SavedView = {
-      id: createId("saved-view"),
-      name: input.name.trim() || "新快捷视图",
-      isSystem: false,
-      scope: input.scope,
-      tagIds: tags.map((tag) => tag.id),
-      sortOrder: (last?.sortOrder ?? 0) + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await this.database.savedViews.add(view);
-    return view;
+    return this.database.transaction("rw", this.database.tags, this.database.savedViews, async () => {
+      const [tags, last, views] = await Promise.all([
+        normalizedTags.length ? this.database.tags.where("normalizedName").anyOf(normalizedTags).toArray() : Promise.resolve([]),
+        this.database.savedViews.orderBy("sortOrder").last(),
+        this.database.savedViews.toArray(),
+      ]);
+      const requestedName = input.name.trim() || "新快捷视图";
+      let name = requestedName;
+      if (requestedName === "新快捷视图") {
+        const names = new Set(views.map((view) => view.name));
+        let sequence = 1;
+        while (names.has(`${requestedName} ${sequence}`)) sequence += 1;
+        name = `${requestedName} ${sequence}`;
+      }
+      const now = Date.now();
+      const view: SavedView = {
+        id: createId("saved-view"),
+        name,
+        isSystem: false,
+        scope: input.scope,
+        tagIds: tags.map((tag) => tag.id),
+        sortOrder: (last?.sortOrder ?? 0) + 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.database.savedViews.add(view);
+      return view;
+    });
   }
 
   async renameSavedView(id: string, name: string) {

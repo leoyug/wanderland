@@ -20,7 +20,7 @@ async function runQueue() {
   const tasks = await inspirationRepository.listRunnableAiTasks();
   for (const task of tasks) {
     if (!(await inspirationRepository.isAiTaskReady(task.itemId))) continue;
-    await inspirationRepository.markAiStarted(task.id);
+    if (!(await inspirationRepository.markAiStarted(task.id))) continue;
     try {
       const input = await inspirationRepository.getAiAnalysisInput(task.itemId);
       if (!input) continue;
