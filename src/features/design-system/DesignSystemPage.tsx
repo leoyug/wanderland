@@ -88,8 +88,8 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
   return (
     <div className="design-system-page">
       <header className="design-system-header">
-        <Button variant="ghost" onPress={onBack}><RiArrowLeftLine size={17} />返回 Wanderland</Button>
-        <div><span>DEV ONLY</span><h1>Wanderland · 设计系统</h1><p>用于验证 token、组件变体与页面组合的一致性。</p></div>
+        <Button variant="ghost" onPress={onBack}><RiArrowLeftLine size={17} />返回 WEBLOOM</Button>
+        <div><span>DEV ONLY</span><h1>WEBLOOM · 设计系统</h1><p>用于验证 token、组件变体与页面组合的一致性。</p></div>
       </header>
 
       <div className="design-system-content">
@@ -99,9 +99,9 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
 
         <PreviewSection title="字体" description="界面、标题与标签按字符混排 Geist Mono 和系统中文字体；描述使用系统字体，特殊标题保持宋体角色。">
           <div className="type-specimens">
-            <div><span>Brand / Condensed Bold</span><p className="display-type">Wanderland</p></div>
+            <div><span>Brand / Condensed Bold</span><p className="display-type">WEBLOOM</p></div>
             <div><span>Headline / PingFang SC</span><p className="headline-type">发现看到的美好</p></div>
-            <div><span>Interface / Unicode-range CJK + Geist Mono</span><p>搜索设计、创意或关键词……「Wanderland UI」2026，快速找回真正有用的内容。</p></div>
+            <div><span>Interface / Unicode-range CJK + Geist Mono</span><p>搜索设计、创意或关键词……「WEBLOOM UI」2026，快速找回真正有用的内容。</p></div>
             <div><span>Content title &amp; tag / Unicode-range CJK + Geist Mono</span><p className="content-title-type">Design Systems 设计系统 · #React组件库</p></div>
             <div><span>Description / System Sans</span><p className="description-type">A readable description 使用系统字体呈现，适合连续阅读。</p></div>
             <div><span>Metadata / Geist Mono</span><code>collectui.com · Last updated: 3 hours ago</code></div>
@@ -138,7 +138,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
             </div>
             <p className="nav-label">快捷视图</p>
             <div className="nav-list">
-              {previewViews.map((view) => <SavedViewNavItem key={view.id} view={view} iconSrc={`/assets/sidebar/${view.isSystem ? "timer" : "lightbulb"}.svg`} isActive={activePreviewView === view.id} onPress={() => setActivePreviewView(view.id)} onRename={(name) => setPreviewViews((current) => current.map((item) => item.id === view.id ? { ...item, name } : item))} onDelete={() => setPreviewViews((current) => current.filter((item) => item.id !== view.id || item.isSystem))} onMove={(sourceId) => movePreviewView(sourceId, view.id)} />)}
+              {previewViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={<SidebarIcon src={`/assets/sidebar/${view.isSystem ? "timer" : "lightbulb"}.svg`} />} isActive={activePreviewView === view.id} onPress={() => setActivePreviewView(view.id)} onRename={(name) => setPreviewViews((current) => current.map((item) => item.id === view.id ? { ...item, name } : item))} onDelete={() => setPreviewViews((current) => current.filter((item) => item.id !== view.id || item.isSystem))} onMove={(sourceId) => movePreviewView(sourceId, view.id)} />)}
             </div>
           </div>
         </PreviewSection>

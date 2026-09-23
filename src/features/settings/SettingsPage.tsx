@@ -350,7 +350,7 @@ function PlaceholderSettings({ section }: { section: "appearance" | "digest" | "
   const data = {
     appearance: { title: "外观", description: "调整工作台的显示方式。", body: "外观设置将在后续版本开放。" },
     digest: { title: "内容简报", description: "把收藏库整理成可回顾的内容简报。", body: "内容简报将在后续版本开放。" },
-    about: { title: "关于Webloom", description: "了解当前版本与本地优先的数据边界。", body: "Wanderland v0.6.8 · 数据只保存在当前浏览器。" },
+    about: { title: "关于WEBLOOM", description: "了解当前版本与本地优先的数据边界。", body: "WEBLOOM v0.6.9 · 数据只保存在当前浏览器。" },
   }[section];
   return <div className="settings-form"><SettingsHeader title={data.title} description={data.description} /><section className="settings-form-section"><SettingsSectionHeading title={data.title} description={data.description} /><SettingsCard><SettingsRow title={data.title} description={data.body} control={<RiInformationLine size={20} aria-hidden="true" />} /></SettingsCard></section></div>;
 }

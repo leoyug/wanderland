@@ -1,13 +1,12 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
-import { SidebarIcon } from "./SidebarIcon";
 
 interface SavedViewNavItemProps {
   view: LibrarySavedView;
-  iconSrc: string;
+  icon: ReactNode;
   isActive: boolean;
   onPress: () => void;
   onRename: (name: string) => void;
@@ -15,7 +14,7 @@ interface SavedViewNavItemProps {
   onMove: (targetId: string) => void;
 }
 
-export function SavedViewNavItem({ view, iconSrc, isActive, onPress, onRename, onDelete, onMove }: SavedViewNavItemProps) {
+export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, onMove }: SavedViewNavItemProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -108,12 +107,12 @@ export function SavedViewNavItem({ view, iconSrc, isActive, onPress, onRename, o
     >
       {isEditing ? (
         <div className="saved-view-editor">
-          <SidebarIcon src={iconSrc} />
+          {icon}
           <input ref={inputRef} value={draft} aria-label="快捷视图名称" onChange={(event) => setDraft(event.target.value)} onKeyDown={handleEditKeys} onBlur={finishEditing} />
         </div>
       ) : (
         <button type="button" onClick={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")}>
-          <SidebarIcon src={iconSrc} />
+          {icon}
           <span>{view.name}</span>
         </button>
       )}

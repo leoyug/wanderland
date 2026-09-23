@@ -107,8 +107,7 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
     <section className={`capture-panel${state === "success" ? " is-success" : ""}`} role="dialog" aria-modal="false" aria-label="收藏当前页面">
       <header className="capture-header">
         <div className="capture-brand">
-          <img src={browser.runtime.getURL("/assets/logo.svg")} alt="" />
-          <span>Wanderland</span>
+          <img src={browser.runtime.getURL("/assets/wordmark.svg")} alt="WEBLOOM" />
         </div>
         <div className="capture-header-actions">
           <button type="button" className="capture-library-link" onClick={() => void openDashboard()}>打开收藏库</button>

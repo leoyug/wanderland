@@ -1,10 +1,10 @@
-import { RiAddLine, RiArticleLine, RiGlobalLine, RiUserFollowLine } from "@remixicon/react";
+import { RiAddLine, RiArticleLine, RiUserFollowLine, RiWindowLine } from "@remixicon/react";
 import { useEffect, useRef, useState } from "react";
 import type { SavedItemKind } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 
 const actions = [
-  { kind: "website", label: "网站", description: "保存网页", icon: RiGlobalLine },
+  { kind: "website", label: "网站", description: "保存网页", icon: RiWindowLine },
   { kind: "article", label: "文章", description: "稍后阅读", icon: RiArticleLine },
   { kind: "follow", label: "关注源", description: "持续关注", icon: RiUserFollowLine },
 ] as const;

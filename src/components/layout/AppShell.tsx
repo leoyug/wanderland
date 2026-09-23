@@ -1,8 +1,7 @@
-import { RiArchiveLine, RiArrowDownSLine, RiArrowLeftLine, RiBookmarkLine, RiDatabase2Line, RiInformationLine, RiNewspaperLine, RiPaletteLine, RiPriceTag3Line, RiSparkling2Line } from "@remixicon/react";
+import { RiArchiveLine, RiArchiveStackLine, RiArticleLine, RiArrowDownSLine, RiArrowLeftLine, RiBookmark3Line, RiBookmarkLine, RiDatabase2Line, RiInformationLine, RiInbox2Line, RiLightbulbFlashLine, RiNewspaperLine, RiPaletteLine, RiPriceTag3Line, RiSettingsLine, RiSparkling2Line, RiTimeLine, RiUserFollowLine, RiWindowLine } from "@remixicon/react";
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import { SavedViewNavItem } from "./SavedViewNavItem";
-import { SidebarIcon } from "./SidebarIcon";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { Button } from "@/src/components/ui/Button";
 
@@ -26,11 +25,10 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-const iconPath = (name: string) => `/assets/sidebar/${name}.svg`;
-const kindItems: Array<{ id: SavedItemKind; label: string; icon: string }> = [
-  { id: "website", label: "网站", icon: iconPath("web") },
-  { id: "article", label: "文章", icon: iconPath("article") },
-  { id: "follow", label: "关注源", icon: iconPath("follow") },
+const kindItems: Array<{ id: SavedItemKind; label: string; icon: ReactNode }> = [
+  { id: "website", label: "网站", icon: <RiWindowLine size={17} aria-hidden="true" /> },
+  { id: "article", label: "文章", icon: <RiArticleLine size={17} aria-hidden="true" /> },
+  { id: "follow", label: "关注源", icon: <RiUserFollowLine size={17} aria-hidden="true" /> },
 ];
 const settingsItems: Array<{ id: SettingsSection; label: string; icon: ReactNode }> = [
   { id: "appearance", label: "外观", icon: <RiPaletteLine size={17} aria-hidden="true" /> },
@@ -40,7 +38,7 @@ const settingsItems: Array<{ id: SettingsSection; label: string; icon: ReactNode
   { id: "backup", label: "备份与恢复", icon: <RiDatabase2Line size={17} aria-hidden="true" /> },
   { id: "archive", label: "归档", icon: <RiArchiveLine size={17} aria-hidden="true" /> },
   { id: "digest", label: "内容简报", icon: <RiNewspaperLine size={17} aria-hidden="true" /> },
-  { id: "about", label: "关于Webloom", icon: <RiInformationLine size={17} aria-hidden="true" /> },
+  { id: "about", label: "关于WEBLOOM", icon: <RiInformationLine size={17} aria-hidden="true" /> },
 ];
 
 export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onOpenSettings, mode = "library", activeSettingsSection = "bookmarks", onSettingsSectionChange, onBackToLibrary, children }: AppShellProps) {
@@ -103,6 +101,10 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
   const stopScrollbarDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (scrollbarDragRef.current?.pointerId === event.pointerId) scrollbarDragRef.current = null;
   };
+  const handleBrandPress = () => {
+    if (mode === "settings") onBackToLibrary?.();
+    else window.location.hash = "";
+  };
   const activeItems = items.filter((item) => !item.archivedAt);
   const countForScope = (scope: LibraryScope) => scope === "all"
     ? activeItems.length
@@ -111,27 +113,27 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
       : scope === "unprocessed"
         ? activeItems.filter((item) => !isSavedItemProcessed(item)).length
         : activeItems.filter((item) => item.kind === scope).length;
-  const renderScope = (scope: LibraryScope, label: string, icon: string) => <SidebarNavItem icon={<SidebarIcon src={icon} />} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} />;
+  const renderScope = (scope: LibraryScope, label: string, icon: ReactNode) => <SidebarNavItem icon={icon} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} />;
 
   return (
     <div className={`app-shell ${mode === "settings" ? "is-settings" : ""}`}>
       <aside className="sidebar">
-        <div className="brand"><img className="brand-mark" src="/assets/logo.svg" alt="" /><span>Wanderland</span></div>
+        <button type="button" className="brand" aria-label="返回首页" onClick={handleBrandPress}><img className="brand-wordmark" src="/assets/wordmark.svg" alt="" /><img className="brand-mark" src="/assets/logo.svg" alt="" aria-hidden="true" /></button>
         <div className="sidebar-navigation-wrap">
         <nav ref={navigationRef} aria-label={mode === "settings" ? "设置导航" : "收藏库导航"} className={`sidebar-navigation ${mode === "settings" ? "settings-navigation" : ""}`}>
           {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={label} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} />)}</div> : <>
-            <section><p className="nav-label">收藏库</p><div className="nav-list">{renderScope("all", "全部", iconPath("inbox"))}{renderScope("unprocessed", "未处理", iconPath("unprocessed"))}{renderScope("favorites", "星标", iconPath("bookmark"))}</div></section>
+            <section><p className="nav-label">收藏库</p><div className="nav-list">{renderScope("all", "全部", <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", "未处理", <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", "星标", <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
             <section><p className="nav-label">内容列表</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, label, icon)}</span>)}</div></section>
             <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p><button type="button" className="saved-view-toggle t-acc-head" aria-label={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} aria-expanded={areSavedViewsExpanded} onClick={() => setAreSavedViewsExpanded((isExpanded) => !isExpanded)}><span className="t-acc-chevron"><RiArrowDownSLine size={18} /></span></button></div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner"><div className="nav-list">
-              {savedViews.map((view) => <SavedViewNavItem key={view.id} view={view} iconSrc={iconPath(view.isSystem ? "timer" : "lightbulb")} isActive={activeSavedView === view.id} onPress={() => onSavedViewChange(view.id)} onRename={(name) => onSavedViewRename(view.id, name)} onDelete={() => onSavedViewDelete(view.id)} onMove={(sourceId) => onSavedViewMove(sourceId, view.id)} />)}
+              {savedViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={view.isSystem ? <RiTimeLine size={17} aria-hidden="true" /> : <RiLightbulbFlashLine size={17} aria-hidden="true" />} isActive={activeSavedView === view.id} onPress={() => onSavedViewChange(view.id)} onRename={(name) => onSavedViewRename(view.id, name)} onDelete={() => onSavedViewDelete(view.id)} onMove={(sourceId) => onSavedViewMove(sourceId, view.id)} />)}
             </div></div></div></section>
           </>}
         </nav>
         {sidebarScrollbar.isVisible ? <div className="sidebar-scrollbar" aria-hidden="true" onPointerDown={handleScrollbarPointerDown} onPointerMove={handleScrollbarPointerMove} onPointerUp={stopScrollbarDrag} onPointerCancel={stopScrollbarDrag}><div className="sidebar-scrollbar-thumb" style={{ height: sidebarScrollbar.height, transform: `translateY(${sidebarScrollbar.top}px)` }} /></div> : null}
         </div>
         <div className="sidebar-bottom">
-          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>返回Webloom</span></button> : <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置" onPress={onOpenSettings}><SidebarIcon src={iconPath("settings")} /><span>设置</span></Button>}
-          <p className="sidebar-copyright">© 2026 Wanderland</p>
+          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>返回WEBLOOM</span></button> : <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置" onPress={onOpenSettings}><RiSettingsLine size={17} aria-hidden="true" /><span>设置</span></Button>}
+          <p className="sidebar-copyright">© 2026 WEBLOOM</p>
         </div>
       </aside>
       <main className="main-content">{children}</main>
