@@ -1,12 +1,12 @@
 import { RiArrowRightUpLine } from "@remixicon/react";
 import type { MouseEventHandler } from "react";
-import { Badge } from "@/src/components/ui/Badge";
 import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { CoverArt } from "./CoverArt";
 import { FavoriteButton } from "./FavoriteButton";
 import { getInspirationPresentation } from "./getInspirationPresentation";
 import { SiteIcon } from "./SiteIcon";
+import { TagSummary } from "./TagSummary";
 
 interface InspirationListItemProps {
   item: LibraryItem;
@@ -37,7 +37,7 @@ export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite
           </a>
         </header>
         <h2 className="list-item-title">{presentation.title}</h2>
-        {item.tags.length ? <footer className="list-item-tags">{item.tags.slice(0, 3).map((tag) => <Badge key={tag} variant="neutral" size="sm" onPress={(event) => { event.stopPropagation(); onTagClick(tag); }}>{tag}</Badge>)}</footer> : null}
+        <TagSummary key={item.id} className="list-item-tags" tags={item.tags} onTagClick={onTagClick} />
       </div>
       {item.kind === "website" && hasCoverImage ? <div className="list-item-cover"><CoverArt item={item} /></div> : null}
       {item.kind === "follow" ? <SiteIcon src={item.siteIcon} pageUrl={item.url} variant="avatar" /> : null}

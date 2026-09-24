@@ -1,6 +1,8 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Button } from "@/src/components/ui/Button";
+import { Tooltip } from "@/src/components/ui/Tooltip";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 
@@ -12,9 +14,10 @@ interface SavedViewNavItemProps {
   onRename: (name: string) => void;
   onDelete: () => void;
   onMove: (targetId: string) => void;
+  showTooltip?: boolean;
 }
 
-export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, onMove }: SavedViewNavItemProps) {
+export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, onMove, showTooltip = false }: SavedViewNavItemProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -111,10 +114,19 @@ export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDe
           <input ref={inputRef} value={draft} aria-label="快捷视图名称" onChange={(event) => setDraft(event.target.value)} onKeyDown={handleEditKeys} onBlur={finishEditing} />
         </div>
       ) : (
-        <button type="button" onClick={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")}>
-          {icon}
-          <span>{view.name}</span>
-        </button>
+        showTooltip ? (
+          <Tooltip content={view.name} placement="right" offset={10} className="sidebar-tooltip-bubble">
+            <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={view.name}>
+              {icon}
+              <span>{view.name}</span>
+            </Button>
+          </Tooltip>
+        ) : (
+          <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={view.name}>
+            {icon}
+            <span>{view.name}</span>
+          </Button>
+        )
       )}
 
       {!view.isSystem && !isEditing ? (

@@ -15,11 +15,11 @@ export function SiteIcon({ src, pageUrl, variant = "mark" }: SiteIconProps) {
 
   useEffect(() => setCandidateIndex(0), [candidates]);
 
-  const className = variant === "avatar" ? "follow-avatar" : "source-mark";
+  const frameClassName = variant === "avatar" ? "follow-avatar" : "source-mark";
   const candidate = candidates[candidateIndex];
   if (candidate) {
-    return <img className={className} src={candidate} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setCandidateIndex((index) => index + 1)} />;
+    return <span className={cn(frameClassName, "site-icon-frame")} aria-hidden="true"><img className="site-icon-image" src={candidate} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setCandidateIndex((index) => index + 1)} /></span>;
   }
 
-  return <span className={cn(className, "site-icon-fallback")} aria-hidden="true"><RiGlobalLine size={variant === "avatar" ? 20 : 12} /></span>;
+  return <span className={cn(frameClassName, "site-icon-fallback")} aria-hidden="true"><RiGlobalLine size={variant === "avatar" ? 20 : 12} /></span>;
 }

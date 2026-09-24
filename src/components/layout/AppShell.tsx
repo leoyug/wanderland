@@ -1,9 +1,19 @@
 import { RiArchiveLine, RiArchiveStackLine, RiArticleLine, RiArrowDownSLine, RiArrowLeftLine, RiBookmark3Line, RiBookmarkLine, RiDatabase2Line, RiInformationLine, RiInbox2Line, RiLightbulbFlashLine, RiNewspaperLine, RiPaletteLine, RiPriceTag3Line, RiSettingsLine, RiSparkling2Line, RiTimeLine, RiUserFollowLine, RiWindowLine } from "@remixicon/react";
-import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
+import {
+  getSidebarPreferences,
+  saveSidebarPreferences,
+  SIDEBAR_COLLAPSE_THRESHOLD,
+  SIDEBAR_WIDTH_COLLAPSED,
+  SIDEBAR_WIDTH_DEFAULT,
+  SIDEBAR_WIDTH_MAX,
+  SIDEBAR_WIDTH_MIN,
+} from "@/src/lib/sidebarPreferences";
 import { SavedViewNavItem } from "./SavedViewNavItem";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { Button } from "@/src/components/ui/Button";
+import { Tooltip } from "@/src/components/ui/Tooltip";
 
 export type SettingsSection = "appearance" | "tags" | "ai" | "bookmarks" | "backup" | "archive" | "digest" | "about";
 
@@ -43,9 +53,32 @@ const settingsItems: Array<{ id: SettingsSection; label: string; icon: ReactNode
 
 export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onOpenSettings, mode = "library", activeSettingsSection = "bookmarks", onSettingsSectionChange, onBackToLibrary, children }: AppShellProps) {
   const [areSavedViewsExpanded, setAreSavedViewsExpanded] = useState(true);
+  const [isViewportNarrow, setIsViewportNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH_DEFAULT);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const navigationRef = useRef<HTMLElement>(null);
   const scrollbarDragRef = useRef<{ pointerId: number; offset: number } | null>(null);
+  const sidebarResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
   const [sidebarScrollbar, setSidebarScrollbar] = useState({ isVisible: false, top: 0, height: 72 });
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const sync = () => setIsViewportNarrow(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getSidebarPreferences().then((preferences) => {
+      if (!isMounted) return;
+      setSidebarWidth(preferences.width);
+      setIsSidebarCollapsed(preferences.collapsed);
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   const syncSidebarScrollbar = () => {
     const navigation = navigationRef.current;
@@ -101,6 +134,63 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
   const stopScrollbarDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (scrollbarDragRef.current?.pointerId === event.pointerId) scrollbarDragRef.current = null;
   };
+
+  const resolveSidebarWidth = (width: number) => {
+    if (width <= SIDEBAR_COLLAPSE_THRESHOLD) return SIDEBAR_WIDTH_COLLAPSED;
+    return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)));
+  };
+
+  const applySidebarWidth = (width: number) => {
+    const nextWidth = resolveSidebarWidth(width);
+    setSidebarWidth(nextWidth);
+    setIsSidebarCollapsed(nextWidth === SIDEBAR_WIDTH_COLLAPSED);
+    return nextWidth;
+  };
+
+  const persistSidebarWidth = (width: number) => {
+    void saveSidebarPreferences({ width, collapsed: width === SIDEBAR_WIDTH_COLLAPSED });
+  };
+
+  const handleSidebarResizePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (isViewportNarrow) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sidebarResizeRef.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: isSidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth };
+    setIsSidebarResizing(true);
+  };
+
+  const handleSidebarResizePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = sidebarResizeRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    applySidebarWidth(drag.startWidth + event.clientX - drag.startX);
+  };
+
+  const stopSidebarResize = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = sidebarResizeRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const nextWidth = resolveSidebarWidth(drag.startWidth + event.clientX - drag.startX);
+    applySidebarWidth(nextWidth);
+    persistSidebarWidth(nextWidth);
+    sidebarResizeRef.current = null;
+    setIsSidebarResizing(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const handleSidebarResizeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 32 : 8;
+    const currentWidth = isSidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidth;
+    let nextWidth: number | undefined;
+    if (event.key === "Home") nextWidth = SIDEBAR_WIDTH_COLLAPSED;
+    if (event.key === "End") nextWidth = SIDEBAR_WIDTH_MAX;
+    if (event.key === "ArrowLeft") nextWidth = currentWidth === SIDEBAR_WIDTH_COLLAPSED ? SIDEBAR_WIDTH_COLLAPSED : currentWidth - step;
+    if (event.key === "ArrowRight") nextWidth = currentWidth === SIDEBAR_WIDTH_COLLAPSED ? SIDEBAR_WIDTH_MIN : currentWidth + step;
+    if (nextWidth === undefined) return;
+    event.preventDefault();
+    const resolvedWidth = applySidebarWidth(nextWidth);
+    persistSidebarWidth(resolvedWidth);
+  };
+
+  const isCompactSidebar = isSidebarCollapsed || isViewportNarrow;
   const handleBrandPress = () => {
     if (mode === "settings") onBackToLibrary?.();
     else window.location.hash = "";
@@ -113,27 +203,30 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
       : scope === "unprocessed"
         ? activeItems.filter((item) => !isSavedItemProcessed(item)).length
         : activeItems.filter((item) => item.kind === scope).length;
-  const renderScope = (scope: LibraryScope, label: string, icon: ReactNode) => <SidebarNavItem icon={icon} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} />;
+  const renderScope = (scope: LibraryScope, label: string, icon: ReactNode) => <SidebarNavItem icon={icon} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} tooltip={mode === "library" && isCompactSidebar ? label : undefined} />;
+  const brandButton = <Button type="button" variant="ghost" className="brand" aria-label="返回首页" onPress={handleBrandPress}><img className="brand-wordmark" src="/assets/wordmark.svg" alt="" /><img className="brand-mark" src="/assets/logo.svg" alt="" aria-hidden="true" /></Button>;
+  const settingsButton = <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置" onPress={onOpenSettings}><RiSettingsLine size={17} aria-hidden="true" /><span>设置</span></Button>;
+  const savedViewToggle = <Button type="button" variant="ghost" className="saved-view-toggle t-acc-head" aria-label={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} aria-expanded={areSavedViewsExpanded} onPress={() => setAreSavedViewsExpanded((isExpanded) => !isExpanded)}><span className="t-acc-chevron"><RiArrowDownSLine size={18} /></span></Button>;
 
   return (
-    <div className={`app-shell ${mode === "settings" ? "is-settings" : ""}`}>
+    <div className={`app-shell ${mode === "settings" ? "is-settings" : ""} ${isSidebarCollapsed ? "is-sidebar-collapsed" : ""} ${isSidebarResizing ? "is-sidebar-resizing" : ""}`} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
       <aside className="sidebar">
-        <button type="button" className="brand" aria-label="返回首页" onClick={handleBrandPress}><img className="brand-wordmark" src="/assets/wordmark.svg" alt="" /><img className="brand-mark" src="/assets/logo.svg" alt="" aria-hidden="true" /></button>
+        <div className="sidebar-resize-handle" role="separator" tabIndex={isViewportNarrow ? -1 : 0} aria-orientation="vertical" aria-label="调整侧边栏宽度" aria-valuemin={SIDEBAR_WIDTH_COLLAPSED} aria-valuemax={SIDEBAR_WIDTH_MAX} aria-valuenow={sidebarWidth} aria-valuetext={isSidebarCollapsed ? "已最小化" : `${sidebarWidth} 像素`} onPointerDown={handleSidebarResizePointerDown} onPointerMove={handleSidebarResizePointerMove} onPointerUp={stopSidebarResize} onPointerCancel={stopSidebarResize} onKeyDown={handleSidebarResizeKeyDown} />
+        {mode === "library" && isCompactSidebar ? <Tooltip content="返回首页" placement="right" offset={10} className="sidebar-tooltip-bubble">{brandButton}</Tooltip> : brandButton}
         <div className="sidebar-navigation-wrap">
         <nav ref={navigationRef} aria-label={mode === "settings" ? "设置导航" : "收藏库导航"} className={`sidebar-navigation ${mode === "settings" ? "settings-navigation" : ""}`}>
-          {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={label} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} />)}</div> : <>
+          {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={label} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? label : undefined} />)}</div> : <>
             <section><p className="nav-label">收藏库</p><div className="nav-list">{renderScope("all", "全部", <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", "未处理", <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", "星标", <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
             <section><p className="nav-label">内容列表</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, label, icon)}</span>)}</div></section>
-            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p><button type="button" className="saved-view-toggle t-acc-head" aria-label={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} aria-expanded={areSavedViewsExpanded} onClick={() => setAreSavedViewsExpanded((isExpanded) => !isExpanded)}><span className="t-acc-chevron"><RiArrowDownSLine size={18} /></span></button></div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner"><div className="nav-list">
-              {savedViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={view.isSystem ? <RiTimeLine size={17} aria-hidden="true" /> : <RiLightbulbFlashLine size={17} aria-hidden="true" />} isActive={activeSavedView === view.id} onPress={() => onSavedViewChange(view.id)} onRename={(name) => onSavedViewRename(view.id, name)} onDelete={() => onSavedViewDelete(view.id)} onMove={(sourceId) => onSavedViewMove(sourceId, view.id)} />)}
+            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner"><div className="nav-list">
+              {savedViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={view.isSystem ? <RiTimeLine size={17} aria-hidden="true" /> : <RiLightbulbFlashLine size={17} aria-hidden="true" />} isActive={activeSavedView === view.id} onPress={() => onSavedViewChange(view.id)} onRename={(name) => onSavedViewRename(view.id, name)} onDelete={() => onSavedViewDelete(view.id)} onMove={(sourceId) => onSavedViewMove(sourceId, view.id)} showTooltip={mode === "library" && isCompactSidebar} />)}
             </div></div></div></section>
           </>}
         </nav>
         {sidebarScrollbar.isVisible ? <div className="sidebar-scrollbar" aria-hidden="true" onPointerDown={handleScrollbarPointerDown} onPointerMove={handleScrollbarPointerMove} onPointerUp={stopScrollbarDrag} onPointerCancel={stopScrollbarDrag}><div className="sidebar-scrollbar-thumb" style={{ height: sidebarScrollbar.height, transform: `translateY(${sidebarScrollbar.top}px)` }} /></div> : null}
         </div>
         <div className="sidebar-bottom">
-          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>返回WEBLOOM</span></button> : <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置" onPress={onOpenSettings}><RiSettingsLine size={17} aria-hidden="true" /><span>设置</span></Button>}
-          <p className="sidebar-copyright">© 2026 WEBLOOM</p>
+          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>返回WEBLOOM</span></button> : isCompactSidebar ? <Tooltip content="设置" placement="right" offset={10} className="sidebar-tooltip-bubble">{settingsButton}</Tooltip> : settingsButton}
         </div>
       </aside>
       <main className="main-content">{children}</main>
