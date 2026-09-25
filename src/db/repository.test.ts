@@ -285,6 +285,34 @@ describe("InspirationRepository", () => {
     database.close();
   });
 
+  it("keeps an icon correction above auto analysis and clears stale analysis when the icon changes", async () => {
+    const database = createDatabase();
+    const repository = new InspirationRepository(database);
+    const created = await repository.createSavedItem({ kind: "follow", url: "https://example.com/profile" });
+    await repository.completeCapture(created.item.id, createCapture({ url: "https://example.com/profile", canonicalUrl: "https://example.com/profile" }));
+    await repository.setSiteIconAutoBackground(created.item.id, "https://example.com/favicon.ico", "dark");
+    await repository.updateSavedItem(created.item.id, {
+      title: "Profile", description: "", tags: [], siteIconBackground: "light",
+    });
+    expect(await database.savedItems.get(created.item.id)).toMatchObject({
+      siteIconAutoBackground: "dark", siteIconBackgroundOverride: "light",
+    });
+
+    await repository.completeCapture(created.item.id, createCapture({
+      url: "https://example.com/profile", canonicalUrl: "https://example.com/profile", favicon: "https://example.com/new-icon.svg",
+    }));
+    await repository.setSiteIconAutoBackground(created.item.id, "https://example.com/favicon.ico", "dark");
+    const afterChange = await database.savedItems.get(created.item.id);
+    expect(afterChange?.siteIconAutoBackground).toBeUndefined();
+    expect(afterChange?.siteIconBackgroundOverride).toBe("light");
+
+    await repository.updateSavedItem(created.item.id, {
+      title: "Profile", description: "", tags: [], siteIconBackground: "auto",
+    });
+    expect((await database.savedItems.get(created.item.id))?.siteIconBackgroundOverride).toBeUndefined();
+    database.close();
+  });
+
   it("adds selected popup tags without duplicating an existing item", async () => {
     const database = createDatabase();
     const repository = new InspirationRepository(database);

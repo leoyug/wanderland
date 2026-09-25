@@ -56,7 +56,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, on
   const body = <div className="card-body"><h2>{presentation.title}</h2>{presentation.description ? <p>{presentation.description}</p> : null}</div>;
   const cover = <div className="card-cover-wrap"><CoverArt item={item} /></div>;
   const tags = <TagSummary key={item.id} className="card-tags" tags={item.tags} onTagClick={onTagClick} />;
-  const followContent = <div className="follow-profile"><SiteIcon src={item.siteIcon} pageUrl={item.url} variant="avatar" />{body}</div>;
+  const followContent = <div className="follow-profile"><SiteIcon item={item} variant="avatar" />{body}</div>;
 
   return (
     <div ref={shellRef} className="inspiration-card-shell">
@@ -69,7 +69,7 @@ export function InspirationCard({ item, onOpen, onTagClick, onToggleFavorite, on
         }
       }}>
         <header className="card-source-row">
-          <div><SiteIcon src={item.siteIcon} pageUrl={item.url} /><a className="card-url-link" href={item.url} target="_blank" rel="noreferrer" title={item.sourceLabel} onClick={(event) => event.stopPropagation()}><span className="card-url-text">{presentation.sourceLabel}</span><RiArrowRightUpLine size={14} aria-hidden="true" /></a></div>
+          <div><SiteIcon item={item} /><a className="card-url-link" href={item.url} target="_blank" rel="noreferrer" title={item.sourceLabel} onClick={(event) => event.stopPropagation()}><span className="card-url-text">{presentation.sourceLabel}</span><RiArrowRightUpLine size={14} aria-hidden="true" /></a></div>
           <div className="source-actions">
             {onToggleFavorite && <FavoriteButton isFavorite={item.isFavorite} onToggle={onToggleFavorite} />}
           </div>

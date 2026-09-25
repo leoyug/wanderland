@@ -1,7 +1,7 @@
-import { RiInformationLine, RiRefreshLine, RiShieldCheckLine } from "@remixicon/react";
+import { RiCloseLine, RiInformationLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
 import { rise } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { endpointPermissionPattern, defaultAiSettings } from "@/src/ai/config";
 import type { AiSettings, AiSettingsView, AiTaskSummary, ApiKeyStorage } from "@/src/ai/types";
 import { aiProviderPresets } from "@/src/ai/presets";
@@ -10,11 +10,14 @@ import { AppShell, type SettingsSection } from "@/src/components/layout/AppShell
 import { Button } from "@/src/components/ui/Button";
 import { ConfirmDialog } from "@/src/components/ui/ConfirmDialog";
 import { Field, Input } from "@/src/components/ui/Field";
+import { SearchField, SearchInput } from "@/src/components/ui/SearchField";
+import { RadioGroup } from "@/src/components/ui/RadioGroup";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { Switch } from "@/src/components/ui/Switch";
 import { useToast } from "@/src/components/ui/Toast";
 import { createBackup, parseBackup, restoreBackup, type Backup } from "@/src/db/backup";
 import { inspirationRepository, type DeletedSavedItem } from "@/src/db/repository";
+import { getThemePreferenceSnapshot, setThemePreference, subscribeThemePreference, type ThemePreference } from "@/src/lib/themePreferences";
 
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
 const emptySummary: AiTaskSummary = { pending: 0, running: 0, failed: 0, complete: 0 };
@@ -160,18 +163,33 @@ function TagsSettings() {
   const [editingId, setEditingId] = useState<string>();
   const [name, setName] = useState("");
   const [deleteId, setDeleteId] = useState<string>();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const deleteTag = tags.find((tag) => tag.id === deleteId);
+  const normalizedQuery = query.trim().normalize("NFKC").toLocaleLowerCase();
+  const visibleTags = normalizedQuery
+    ? tags.filter((tag) => [tag.name, ...tag.aliases].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)))
+    : tags;
   const save = async (id: string) => { await inspirationRepository.renameTag(id, name); setEditingId(undefined); showToast("标签已保存", { tone: "success" }); };
   const deleteTagItem = async (id: string) => { await inspirationRepository.deleteTag(id); showToast("标签已删除", { tone: "success" }); };
+  const closeSearch = () => { setIsSearchOpen(false); setQuery(""); };
+  const tagSearchAction = isSearchOpen ? <SearchField className="tag-search-field" aria-label="搜索标签" value={query} onChange={setQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeSearch(); } }}>
+    <RiSearchLine size={16} aria-hidden="true" />
+    <SearchInput autoFocus aria-label="搜索标签" placeholder="搜索标签" />
+    {query ? <Button size="icon" variant="ghost" aria-label="清除标签搜索" onPress={() => setQuery("")}><RiCloseLine size={16} /></Button> : null}
+  </SearchField> : <Button size="sm" variant="secondary" onPress={() => setIsSearchOpen(true)}><RiSearchLine size={15} aria-hidden="true" />搜索标签</Button>;
   return <><div className="settings-form">
     <SettingsHeader title="标签" description="统一管理收藏库中的标签，重命名为已有标签会自动合并。" />
     <section className="settings-form-section">
-      <SettingsSectionHeading title="已保存标签" description="保留原名称作为别名，已有收藏项会同步更新。" />
+      <div className="settings-section-heading-row">
+        <SettingsSectionHeading title="已保存标签" description="保留原名称作为别名，已有收藏项会同步更新。" />
+        <div className="settings-section-heading-action">{tagSearchAction}</div>
+      </div>
       <SettingsCard className="tag-settings-list">
-        {tags.length ? tags.map((tag) => <div className="settings-list-row" key={tag.id}>
+        {visibleTags.length ? visibleTags.map((tag) => <div className="settings-list-row" key={tag.id}>
           {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={`重命名 ${tag.name}`} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount} 个收藏项{tag.aliases.length ? ` · 别名 ${tag.aliases.join("、")}` : ""}</span></div>}
           <div className="settings-list-actions">{editingId === tag.id ? <Button size="sm" variant="primary" onPress={() => void save(tag.id)}>保存</Button> : <Button size="sm" variant="secondary" onPress={() => { setEditingId(tag.id); setName(tag.name); setDeleteId(undefined); }}>重命名</Button>}<Button size="sm" variant="dangerGhost" onPress={() => setDeleteId(tag.id)}>删除</Button></div>
-        </div>) : <div className="settings-empty-row">还没有标签。可在收藏项详情中添加。</div>}
+        </div>) : <div className="settings-empty-row">{normalizedQuery ? "没有匹配的标签。" : "还没有标签。可在收藏项详情中添加。"}</div>}
       </SettingsCard>
     </section>
   </div><ConfirmDialog isOpen={Boolean(deleteTag)} title="删除标签？" description={deleteTag ? `这将从收藏项中移除“${deleteTag.name}”，此操作无法撤销。` : ""} onClose={() => setDeleteId(undefined)} onConfirm={() => deleteTag ? deleteTagItem(deleteTag.id) : undefined} /></>;
@@ -346,9 +364,40 @@ function ArchiveSettings() {
   return <div className="settings-form"><SettingsHeader title="归档" description="归档项不会出现在收藏库中，可随时恢复或永久删除。" /><section className="settings-form-section"><SettingsSectionHeading title="已归档内容" description="恢复后会回到原来的收藏库范围。" /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatArchivedAt(item.archivedAt!)}</span></div><div className="settings-list-actions"><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>删除</Button><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>取消归档</Button></div></article>) : <div className="settings-empty-row">还没有归档内容。</div>}</SettingsCard></section></div>;
 }
 
-function PlaceholderSettings({ section }: { section: "appearance" | "digest" | "about" }) {
+const themeOptions: ReadonlyArray<{ value: ThemePreference; label: string }> = [
+  { value: "dark", label: "深色" },
+  { value: "light", label: "浅色" },
+  { value: "system", label: "系统" },
+];
+
+function AppearanceSettings() {
+  const theme = useSyncExternalStore(subscribeThemePreference, getThemePreferenceSnapshot);
+  return <div className="settings-form">
+    <SettingsHeader title="外观" description="选择适合当前环境的工作台外观。" />
+    <section className="settings-form-section">
+      <SettingsSectionHeading title="主题" description="选择“系统”时，Webloom 会随设备外观自动切换。" />
+      <RadioGroup label="主题" className="appearance-theme-options" orientation="horizontal" value={theme} options={themeOptions} onChange={(next) => void setThemePreference(next)} renderOption={(option) => <>
+        <span className={`theme-preview theme-preview--${option.value}`} aria-hidden="true">
+          <span className="theme-preview-sidebar">
+            <span className="theme-preview-lights"><i /><i /><i /></span>
+            <span className="theme-preview-sidebar-lines"><i /><i /><i /></span>
+            <span className="theme-preview-sidebar-bottom" />
+          </span>
+          <span className="theme-preview-main">
+            <span className="theme-preview-heading" />
+            <span className="theme-preview-subtitle" />
+            <span className="theme-preview-tiles"><i /><i /><i /></span>
+            <span className="theme-preview-footer" />
+          </span>
+        </span>
+        <strong>{option.label}</strong>
+      </>} />
+    </section>
+  </div>;
+}
+
+function PlaceholderSettings({ section }: { section: "digest" | "about" }) {
   const data = {
-    appearance: { title: "外观", description: "调整工作台的显示方式。", body: "外观设置将在后续版本开放。" },
     digest: { title: "内容简报", description: "把收藏库整理成可回顾的内容简报。", body: "内容简报将在后续版本开放。" },
     about: { title: "关于WEBLOOM", description: "了解当前版本与本地优先的数据边界。", body: "WEBLOOM v0.6.9 · 数据只保存在当前浏览器。" },
   }[section];
@@ -361,7 +410,7 @@ export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void 
   const riseAnimations = useRef<Animation[]>([]);
   const items = useLiveQuery(() => inspirationRepository.listLibraryItems(), []) ?? [];
   const views = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []) ?? [];
-  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : <PlaceholderSettings section={section} />;
+  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : section === "appearance" ? <AppearanceSettings /> : <PlaceholderSettings section={section} />;
 
   useLayoutEffect(() => {
     riseAnimations.current.forEach((animation) => animation.cancel());

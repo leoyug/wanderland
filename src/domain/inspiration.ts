@@ -63,6 +63,10 @@ export interface SavedItem {
   updatedAt: number;
   lastOpenedAt?: number;
   siteIcon?: string;
+  /** Set only when local pixel analysis finds a light mark on transparency. */
+  siteIconAutoBackground?: "dark";
+  /** A user's explicit correction always wins over automatic analysis. */
+  siteIconBackgroundOverride?: "light" | "dark";
 }
 
 export interface Snapshot {
@@ -131,6 +135,7 @@ export interface UpdateSavedItemInput {
   tags: string[];
   coverBlob?: Blob;
   descriptionEdited?: boolean;
+  siteIconBackground?: "auto" | "light" | "dark";
 }
 
 export interface LibrarySavedView extends SavedView {

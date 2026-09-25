@@ -15,6 +15,8 @@ const backupSchema = z.object({
     isFavorite: z.boolean(), snapshotStatus: z.enum(["pending", "complete", "partial", "failed"]),
     aiStatus: z.enum(["pending", "complete", "failed"]), createdAt: z.number(), updatedAt: z.number(),
     snapshotId: z.string().optional(),
+    siteIconAutoBackground: z.literal("dark").optional(),
+    siteIconBackgroundOverride: z.enum(["light", "dark"]).optional(),
   }).passthrough()),
   snapshots: z.array(z.object({ id: z.string().min(1), itemId: z.string().min(1), cleanHtml: z.string(), cleanText: z.string() }).passthrough()),
   tags: z.array(z.object({ id: z.string().min(1), name: z.string(), normalizedName: z.string().min(1), aliases: z.array(z.string()), usageCount: z.number(), createdAt: z.number(), updatedAt: z.number() }).passthrough()),

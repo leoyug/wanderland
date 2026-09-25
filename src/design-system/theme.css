@@ -1,0 +1,159 @@
+/* Dark palette: Beam's #121212 ground / #181818 surface hierarchy,
+   translated into Webloom's existing semantic tokens and orange identity. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #121212;
+  --color-surface: #181818;
+  --color-surface-secondary: #202020;
+  --color-surface-subtle: #262626;
+  --color-surface-muted: #2c2c2c;
+  --color-sidebar-active: #303030;
+  --color-surface-glass: rgb(24 24 24 / 88%);
+  --color-border-default: #292929;
+  --color-border-subtle: #303030;
+  --color-border-strong: #484848;
+  --color-card-border: #323232;
+  --color-media-border: #333333;
+  --color-ink: #f5f5f5;
+  --color-text: #dedede;
+  --color-muted: #b1b1b1;
+  --color-faint: #929292;
+  --color-copyright: #888888;
+  --color-accent-soft: #38271c;
+  --color-tag-text: #ffae70;
+  --color-tag-surface: #38271c;
+  --color-tag-surface-hover: #50321f;
+  --color-shortcut-text: #aaaab1;
+  --color-shortcut-surface: #303036;
+  --color-scrollbar-thumb: #444444;
+  --color-scrollbar-thumb-hover: #555555;
+  --color-scrollbar-thumb-active: #666666;
+  --color-info: #80adff;
+  --color-info-soft: #1c2a43;
+  --color-success: #59d7bf;
+  --color-success-soft: #173b36;
+  --color-warning: #ffb35c;
+  --color-warning-soft: #403020;
+  --color-danger: #ff7679;
+  --color-danger-soft: #402326;
+  --color-waiting: #ffcf57;
+  --color-waiting-soft: #3d351b;
+  --tabs-pill-bg: var(--color-surface-subtle);
+  --shadow-card-lift: 0 2px 5px rgb(0 0 0 / 16%), 0 12px 28px -18px rgb(0 0 0 / 65%);
+  --shadow-window: 0 2px 6px rgb(0 0 0 / 25%), 0 32px 64px -34px rgb(0 0 0 / 75%);
+  --shadow-toast: 0 4px 12px -2px rgb(0 0 0 / 32%), 0 24px 64px -18px rgb(0 0 0 / 72%);
+}
+
+@supports (color: color(display-p3 1 1 1)) {
+  html[data-theme="dark"] {
+    --color-canvas: color(display-p3 0.07059 0.07059 0.07059);
+    --color-surface: color(display-p3 0.09412 0.09412 0.09412);
+    --color-surface-secondary: color(display-p3 0.12549 0.12549 0.12549);
+    --color-surface-subtle: color(display-p3 0.14902 0.14902 0.14902);
+    --color-surface-muted: color(display-p3 0.17255 0.17255 0.17255);
+    --color-sidebar-active: color(display-p3 0.18824 0.18824 0.18824);
+    --color-surface-glass: color(display-p3 0.09412 0.09412 0.09412 / 88%);
+    --color-border-default: color(display-p3 0.16078 0.16078 0.16078);
+    --color-border-subtle: color(display-p3 0.18824 0.18824 0.18824);
+    --color-border-strong: color(display-p3 0.28235 0.28235 0.28235);
+    --color-card-border: color(display-p3 0.19608 0.19608 0.19608);
+    --color-media-border: color(display-p3 0.2 0.2 0.2);
+    --color-ink: color(display-p3 0.96078 0.96078 0.96078);
+    --color-text: color(display-p3 0.87059 0.87059 0.87059);
+    --color-muted: color(display-p3 0.69412 0.69412 0.69412);
+    --color-faint: color(display-p3 0.57255 0.57255 0.57255);
+    --color-copyright: color(display-p3 0.53333 0.53333 0.53333);
+    --color-accent-soft: color(display-p3 0.21961 0.15294 0.1098);
+    --color-tag-text: color(display-p3 1 0.68235 0.43922);
+    --color-tag-surface: color(display-p3 0.21961 0.15294 0.1098);
+    --color-tag-surface-hover: color(display-p3 0.31373 0.19608 0.12157);
+    --color-shortcut-text: color(display-p3 0.66667 0.66667 0.69412);
+    --color-shortcut-surface: color(display-p3 0.18824 0.18824 0.21176);
+    --color-scrollbar-thumb: color(display-p3 0.26667 0.26667 0.26667);
+    --color-scrollbar-thumb-hover: color(display-p3 0.33333 0.33333 0.33333);
+    --color-scrollbar-thumb-active: color(display-p3 0.4 0.4 0.4);
+    --color-info: color(display-p3 0.50196 0.67843 1);
+    --color-info-soft: color(display-p3 0.1098 0.16471 0.26275);
+    --color-success: color(display-p3 0.34902 0.84314 0.74902);
+    --color-success-soft: color(display-p3 0.0902 0.23137 0.21176);
+    --color-warning: color(display-p3 1 0.70196 0.36078);
+    --color-warning-soft: color(display-p3 0.25098 0.18824 0.12549);
+    --color-danger: color(display-p3 1 0.46275 0.47451);
+    --color-danger-soft: color(display-p3 0.25098 0.13725 0.14902);
+    --color-waiting: color(display-p3 1 0.81176 0.34118);
+    --color-waiting-soft: color(display-p3 0.23922 0.20784 0.10588);
+  }
+}
+
+html[data-theme="dark"] .saved-view-editor input { background: var(--color-surface-subtle); }
+html[data-theme="dark"] .library-search { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-border-subtle); }
+html[data-theme="dark"] .floating-menu-panel { background: var(--color-surface-glass); }
+html[data-theme="dark"] .design-system-header { background: var(--color-surface-glass); }
+
+/* Fixed miniature theme previews; these colors intentionally do not follow the active theme. */
+.theme-preview--light {
+  --preview-ground: #f4f1ed;
+  --preview-heading: #d2d2d2;
+  --preview-subtitle: #e1e1e1;
+  --preview-card: #ffffff;
+  --preview-line: #d9d9d9;
+}
+.theme-preview--dark {
+  --preview-ground: #303030;
+  --preview-heading: #929292;
+  --preview-subtitle: #737373;
+  --preview-card: #181818;
+  --preview-line: #5a5a5a;
+}
+.theme-preview--system {
+  --preview-ground: #f4f1ed;
+  --preview-heading: #d2d2d2;
+  --preview-subtitle: #e1e1e1;
+  --preview-card: #ffffff;
+  --preview-line: #5a5a5a;
+  --preview-system-sidebar: #181818;
+  --preview-system-main: linear-gradient(90deg, #303030 28%, #f4f1ed 28%);
+  --preview-system-tile-left: #181818;
+}
+.theme-preview--system .theme-preview-sidebar { background: var(--preview-system-sidebar); }
+.theme-preview--system .theme-preview-main { background: var(--preview-system-main); }
+.theme-preview--system .theme-preview-tiles i:first-child { background: var(--preview-system-tile-left); }
+@supports (color: color(display-p3 1 1 1)) {
+  .theme-preview--light {
+    --preview-ground: color(display-p3 0.95479 0.94549 0.93104);
+    --preview-heading: color(display-p3 0.82353 0.82353 0.82353);
+    --preview-subtitle: color(display-p3 0.88235 0.88235 0.88235);
+    --preview-card: color(display-p3 1 1 1);
+    --preview-line: color(display-p3 0.85098 0.85098 0.85098);
+  }
+  .theme-preview--dark {
+    --preview-ground: color(display-p3 0.18824 0.18824 0.18824);
+    --preview-heading: color(display-p3 0.57255 0.57255 0.57255);
+    --preview-subtitle: color(display-p3 0.45098 0.45098 0.45098);
+    --preview-card: color(display-p3 0.09412 0.09412 0.09412);
+    --preview-line: color(display-p3 0.35294 0.35294 0.35294);
+  }
+  .theme-preview--system {
+    --preview-ground: color(display-p3 0.95479 0.94549 0.93104);
+    --preview-heading: color(display-p3 0.82353 0.82353 0.82353);
+    --preview-subtitle: color(display-p3 0.88235 0.88235 0.88235);
+    --preview-card: color(display-p3 1 1 1);
+    --preview-line: color(display-p3 0.35294 0.35294 0.35294);
+    --preview-system-sidebar: color(display-p3 0.09412 0.09412 0.09412);
+    --preview-system-main: linear-gradient(90deg, color(display-p3 0.18824 0.18824 0.18824) 28%, color(display-p3 0.95479 0.94549 0.93104) 28%);
+    --preview-system-tile-left: color(display-p3 0.09412 0.09412 0.09412);
+  }
+}
+
+@media (max-width: 600px) {
+  .appearance-theme-options { gap: 8px; }
+  .theme-preview-sidebar { padding: 9px 5px 5px; gap: 8px; }
+  .theme-preview-main { gap: 3px; padding: 26% 5px 5px; }
+  .theme-preview-tiles { gap: 2px; margin-top: 6px; }
+  .theme-preview-tiles i { height: 19px; border-radius: var(--radius-tag); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-preview { transition: none; }
+  .appearance-theme-options .radio-option-custom:hover .theme-preview { transform: none; }
+}

@@ -1,9 +1,9 @@
 import { RiAddLine, RiArrowLeftLine, RiArrowUpDownLine, RiCheckLine, RiErrorWarningLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine, RiSettings3Line } from "@remixicon/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
 import { InspirationCard } from "@/src/components/inspiration/InspirationCard";
 import { InspirationListItem } from "@/src/components/inspiration/InspirationListItem";
-import { SavedViewNavItem } from "@/src/components/layout/SavedViewNavItem";
+import { SavedViewReorderList } from "@/src/components/layout/SavedViewReorderList";
 import { SidebarIcon } from "@/src/components/layout/SidebarIcon";
 import { SidebarNavItem } from "@/src/components/layout/SidebarNavItem";
 import { Badge } from "@/src/components/ui/Badge";
@@ -40,6 +40,22 @@ const colors = [
   { name: "等待", token: "--color-waiting", value: "#FFC300" },
 ];
 
+const darkColorValues: Record<string, string> = {
+  "--color-canvas": "#121212",
+  "--color-surface": "#181818",
+  "--color-surface-secondary": "#202020",
+  "--color-border-default": "#292929",
+  "--color-ink": "#F5F5F5",
+  "--color-text": "#DEDEDE",
+  "--color-muted": "#B1B1B1",
+  "--color-scrollbar-thumb": "#444444",
+  "--color-success": "#59D7BF",
+  "--color-info": "#80ADFF",
+  "--color-warning": "#FFB35C",
+  "--color-danger": "#FF7679",
+  "--color-waiting": "#FFCF57",
+};
+
 const layoutOptions = [
   { value: "grid", label: "详情卡片", icon: <RiFunctionLine size={15} aria-hidden="true" /> },
   { value: "compact", label: "紧凑卡片", icon: <RiListCheck2 size={15} aria-hidden="true" /> },
@@ -56,6 +72,12 @@ function PreviewSection({ title, description, children }: { title: string; descr
 }
 
 export function DesignSystemPage({ onBack }: { onBack: () => void }) {
+  const [isDark, setIsDark] = useState(document.documentElement.dataset.theme === "dark");
+  useEffect(() => {
+    const observer = new MutationObserver(() => setIsDark(document.documentElement.dataset.theme === "dark"));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
   const { showToast, showUndoToast, updateToast } = useToast();
   const [previewViews, setPreviewViews] = useState<LibrarySavedView[]>([
     { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article", tagIds: [], tags: [], sortOrder: 0, createdAt: 0, updatedAt: 0 },
@@ -94,7 +116,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
 
       <div className="design-system-content">
         <PreviewSection title="颜色" description="色块使用 Display-P3 渲染；数值以便于设计核对的大写十六进制参考值展示。">
-          <div className="color-grid">{colors.map(({ name, token, value }) => <div className="color-swatch" key={name}><i style={{ background: `var(${token})` }} /><span>{name}</span><code>{value}</code></div>)}</div>
+          <div className="color-grid">{colors.map(({ name, token, value }) => <div className="color-swatch" key={name}><i style={{ background: `var(${token})` }} /><span>{name}</span><code>{isDark ? (darkColorValues[token] ?? value) : value}</code></div>)}</div>
         </PreviewSection>
 
         <PreviewSection title="字体" description="界面、标题与标签按字符混排 Geist Mono 和系统中文字体；描述使用系统字体，特殊标题保持宋体角色。">
@@ -137,9 +159,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
               <SidebarNavItem icon={<SidebarIcon src="/assets/sidebar/article.svg" />} label="文章" count={1} onPress={() => setActivePreviewView("")} />
             </div>
             <p className="nav-label">快捷视图</p>
-            <div className="nav-list">
-              {previewViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={<SidebarIcon src={`/assets/sidebar/${view.isSystem ? "timer" : "lightbulb"}.svg`} />} isActive={activePreviewView === view.id} onPress={() => setActivePreviewView(view.id)} onRename={(name) => setPreviewViews((current) => current.map((item) => item.id === view.id ? { ...item, name } : item))} onDelete={() => setPreviewViews((current) => current.filter((item) => item.id !== view.id || item.isSystem))} onMove={(sourceId) => movePreviewView(sourceId, view.id)} />)}
-            </div>
+            <SavedViewReorderList views={previewViews} activeViewId={activePreviewView} onSelect={setActivePreviewView} onRename={(id, name) => setPreviewViews((current) => current.map((item) => item.id === id ? { ...item, name } : item))} onDelete={(id) => setPreviewViews((current) => current.filter((item) => item.id !== id || item.isSystem))} onMove={movePreviewView} showTooltip={false} />
           </div>
         </PreviewSection>
 

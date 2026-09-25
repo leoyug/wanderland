@@ -4,10 +4,12 @@ import { reveal } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CoverArt } from "@/src/components/inspiration/CoverArt";
+import { SiteIcon } from "@/src/components/inspiration/SiteIcon";
 import { Badge } from "@/src/components/ui/Badge";
 import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
+import { RadioGroup } from "@/src/components/ui/RadioGroup";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { TagInput } from "@/src/components/ui/TagInput";
 import { inspirationRepository } from "@/src/db/repository";
@@ -34,6 +36,11 @@ const kindOptions = [
   { value: "article", label: "文章" },
   { value: "follow", label: "关注源" },
 ] as const;
+const iconBackgroundOptions = [
+  { value: "auto", label: "自动" },
+  { value: "light", label: "浅底" },
+  { value: "dark", label: "深底" },
+] as const;
 
 export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, siteItemCount, onShowSite, initialMode = "details", initialEditing = false, initialEditFocus }: DetailDialogProps) {
   const snapshot = useLiveQuery(() => item ? inspirationRepository.getSnapshot(item.id) : undefined, [item?.id]);
@@ -43,6 +50,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<SavedItemKind>("website");
+  const [iconBackground, setIconBackground] = useState<"auto" | "light" | "dark">("auto");
   const [tags, setTags] = useState<string[]>([]);
   const [saveError, setSaveError] = useState("");
   const [coverBlob, setCoverBlob] = useState<File>();
@@ -57,6 +65,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setTitle(item.title);
     setDescription(item.description);
     setKind(item.kind);
+    setIconBackground(item.siteIconBackgroundOverride ?? "auto");
     setTags(item.tags);
     setSaveError("");
     setCoverBlob(undefined);
@@ -97,7 +106,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   };
   const save = async () => {
     try {
-      await onUpdate({ kind, title, description, descriptionEdited: description !== item.description, tags, coverBlob });
+      await onUpdate({ kind, title, description, descriptionEdited: description !== item.description, tags, coverBlob, siteIconBackground: iconBackground });
       setSaveError("");
       setIsEditing(false);
     } catch (error) {
@@ -108,6 +117,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     setTitle(item.title);
     setDescription(item.description);
     setKind(item.kind);
+    setIconBackground(item.siteIconBackgroundOverride ?? "auto");
     setTags(item.tags);
     setCoverBlob(undefined);
     setCoverPasteError("");
@@ -149,6 +159,13 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
                     <div className="field detail-kind-field"><label>内容类型</label><SelectMenu<SavedItemKind> label="内容类型" value={kind} options={kindOptions} onChange={(nextKind) => { setKind(nextKind); setSaveError(""); }} /><small>保存后会按新类型重新进行 AI 整理；人工描述和手动调整的标签保持优先。</small></div>
                     <Field label="描述" value={description} onChange={setDescription} multiline />
                     <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
+                    <div className="icon-appearance-editor">
+                      <span className="icon-appearance-title" aria-hidden="true">图标底色</span>
+                      <div className="icon-appearance-content">
+                        <div className="icon-appearance-preview"><SiteIcon item={item} variant={kind === "follow" ? "avatar" : "mark"} backgroundOverride={iconBackground} /></div>
+                        <div className="icon-appearance-details"><RadioGroup label="图标底色" value={iconBackground} options={iconBackgroundOptions} onChange={setIconBackground} className="icon-appearance-options" orientation="horizontal" /><small>自动模式仅在能够读取图像时识别浅色透明标志；浅底或深底会覆盖自动结果。</small></div>
+                      </div>
+                    </div>
                     {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
                     <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "保存后将锁定封面，不再被自动采集覆盖。"}</small></div><div className="cover-paste-target" tabIndex={0} role="textbox" aria-label="粘贴封面图片" aria-multiline="false" onPaste={pasteCover}>点击这里，然后按 ⌘V / Ctrl+V 粘贴图片</div>{coverPasteError ? <small role="alert">{coverPasteError}</small> : null}<input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => { setCoverBlob(event.target.files?.[0]); setCoverPasteError(""); }} /></div>
                   </form> : <>

@@ -4,6 +4,7 @@ import { isTrustedAiMessageSender } from "@/src/ai/messageSecurity";
 import { OpenAiCompatibleProvider } from "@/src/ai/openAiCompatibleProvider";
 import { processAiQueue } from "@/src/ai/runner";
 import { readRemoteMetadata } from "@/src/capture/readRemoteMetadata";
+import { analyzeSiteIcon } from "@/src/capture/analyzeSiteIcon";
 import type { CaptureResponse, ExtensionRequest, PageCapture } from "@/src/capture/types";
 import { inspirationRepository } from "@/src/db/repository";
 
@@ -57,11 +58,20 @@ async function readTab(tabId: number) {
   return capture;
 }
 
+async function completeCaptureWithIconAnalysis(itemId: string, capture: PageCapture, captureMethod: "active-tab" | "manual-url" | "import" = "active-tab") {
+  const completed = await inspirationRepository.completeCapture(itemId, capture, captureMethod);
+  const appearance = await analyzeSiteIcon(capture.favicon, capture.url);
+  if (appearance && capture.favicon) {
+    await inspirationRepository.setSiteIconAutoBackground(completed.itemId, capture.favicon, appearance.background).catch(() => undefined);
+  }
+  return completed;
+}
+
 async function captureIntoItem(itemId: string, tab: Awaited<ReturnType<typeof getActiveWebTab>>) {
   await inspirationRepository.markCaptureStarted(itemId);
   try {
     const capture = await readTab(tab.id!);
-    const completed = { capture, ...(await inspirationRepository.completeCapture(itemId, capture)) };
+    const completed = { capture, ...(await completeCaptureWithIconAnalysis(itemId, capture)) };
     void processAiQueue();
     return completed;
   } catch (error) {
@@ -108,7 +118,7 @@ async function retryCurrentPage(request: Extract<ExtensionRequest, { type: "capt
     }
     await inspirationRepository.markCaptureStarted(item.id);
     started = true;
-    const completed = await inspirationRepository.completeCapture(item.id, capture);
+    const completed = await completeCaptureWithIconAnalysis(item.id, capture);
     return { ok: true, created: false, itemId: completed.itemId, title: capture.title || item.title, completeness: capture.completeness };
   } catch (error) {
     if (started) await inspirationRepository.failCapture(request.itemId, readableError(error));
@@ -143,7 +153,7 @@ async function captureRemotePage(
     } finally {
       clearTimeout(timeout);
     }
-    const completed = await inspirationRepository.completeCapture(item.id, capture, captureMethod);
+    const completed = await completeCaptureWithIconAnalysis(item.id, capture, captureMethod);
     void processAiQueue();
     return { ok: true, created: false, itemId: completed.itemId, title: capture.title, completeness: capture.completeness };
   } catch (error) {

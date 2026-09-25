@@ -1,8 +1,9 @@
 export const SIDEBAR_WIDTH_DEFAULT = 220;
 export const SIDEBAR_WIDTH_MIN = 176;
-export const SIDEBAR_WIDTH_MAX = 360;
+export const SIDEBAR_WIDTH_MAX = 320;
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 export const SIDEBAR_COLLAPSE_THRESHOLD = 160;
+export const SIDEBAR_WIDTH_SNAP_THRESHOLD = 20;
 
 const SIDEBAR_PREFERENCES_KEY = "wanderland.sidebar.preferences";
 
@@ -20,9 +21,15 @@ function clampExpandedWidth(width: number) {
   return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)));
 }
 
+export function normalizeSidebarWidth(width: number, snapToDefault = false) {
+  if (width <= SIDEBAR_COLLAPSE_THRESHOLD) return SIDEBAR_WIDTH_COLLAPSED;
+  const clampedWidth = clampExpandedWidth(width);
+  return snapToDefault && Math.abs(clampedWidth - SIDEBAR_WIDTH_DEFAULT) <= SIDEBAR_WIDTH_SNAP_THRESHOLD ? SIDEBAR_WIDTH_DEFAULT : clampedWidth;
+}
+
 export function normalizeSidebarPreferences(value: Partial<SidebarPreferences> | undefined): SidebarPreferences {
   if (value?.collapsed === true) return { width: SIDEBAR_WIDTH_COLLAPSED, collapsed: true };
-  return { width: clampExpandedWidth(value?.width ?? SIDEBAR_WIDTH_DEFAULT), collapsed: false };
+  return { width: normalizeSidebarWidth(value?.width ?? SIDEBAR_WIDTH_DEFAULT), collapsed: false };
 }
 
 export async function getSidebarPreferences(): Promise<SidebarPreferences> {

@@ -1,16 +1,16 @@
-import { RiArchiveLine, RiArchiveStackLine, RiArticleLine, RiArrowDownSLine, RiArrowLeftLine, RiBookmark3Line, RiBookmarkLine, RiDatabase2Line, RiInformationLine, RiInbox2Line, RiLightbulbFlashLine, RiNewspaperLine, RiPaletteLine, RiPriceTag3Line, RiSettingsLine, RiSparkling2Line, RiTimeLine, RiUserFollowLine, RiWindowLine } from "@remixicon/react";
+import { RiArchiveLine, RiArchiveStackLine, RiArticleLine, RiArrowDownSLine, RiArrowLeftLine, RiBookmark3Line, RiBookmarkLine, RiDatabase2Line, RiInformationLine, RiInbox2Line, RiNewspaperLine, RiPaletteLine, RiPriceTag3Line, RiSettingsLine, RiSparkling2Line, RiUserFollowLine, RiWindowLine } from "@remixicon/react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { isSavedItemProcessed, type LibraryItem, type LibrarySavedView, type LibraryScope, type SavedItemKind } from "@/src/domain/inspiration";
 import {
   getSidebarPreferences,
   saveSidebarPreferences,
-  SIDEBAR_COLLAPSE_THRESHOLD,
   SIDEBAR_WIDTH_COLLAPSED,
   SIDEBAR_WIDTH_DEFAULT,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
+  normalizeSidebarWidth,
 } from "@/src/lib/sidebarPreferences";
-import { SavedViewNavItem } from "./SavedViewNavItem";
+import { SavedViewReorderList } from "./SavedViewReorderList";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { Button } from "@/src/components/ui/Button";
 import { Tooltip } from "@/src/components/ui/Tooltip";
@@ -135,13 +135,8 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
     if (scrollbarDragRef.current?.pointerId === event.pointerId) scrollbarDragRef.current = null;
   };
 
-  const resolveSidebarWidth = (width: number) => {
-    if (width <= SIDEBAR_COLLAPSE_THRESHOLD) return SIDEBAR_WIDTH_COLLAPSED;
-    return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)));
-  };
-
-  const applySidebarWidth = (width: number) => {
-    const nextWidth = resolveSidebarWidth(width);
+  const applySidebarWidth = (width: number, snapToDefault = false) => {
+    const nextWidth = normalizeSidebarWidth(width, snapToDefault);
     setSidebarWidth(nextWidth);
     setIsSidebarCollapsed(nextWidth === SIDEBAR_WIDTH_COLLAPSED);
     return nextWidth;
@@ -168,8 +163,7 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
   const stopSidebarResize = (event: PointerEvent<HTMLDivElement>) => {
     const drag = sidebarResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const nextWidth = resolveSidebarWidth(drag.startWidth + event.clientX - drag.startX);
-    applySidebarWidth(nextWidth);
+    const nextWidth = applySidebarWidth(drag.startWidth + event.clientX - drag.startX, true);
     persistSidebarWidth(nextWidth);
     sidebarResizeRef.current = null;
     setIsSidebarResizing(false);
@@ -218,9 +212,9 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
           {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={label} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? label : undefined} />)}</div> : <>
             <section><p className="nav-label">收藏库</p><div className="nav-list">{renderScope("all", "全部", <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", "未处理", <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", "星标", <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
             <section><p className="nav-label">内容列表</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, label, icon)}</span>)}</div></section>
-            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner"><div className="nav-list">
-              {savedViews.map((view) => <SavedViewNavItem key={view.id} view={view} icon={view.isSystem ? <RiTimeLine size={17} aria-hidden="true" /> : <RiLightbulbFlashLine size={17} aria-hidden="true" />} isActive={activeSavedView === view.id} onPress={() => onSavedViewChange(view.id)} onRename={(name) => onSavedViewRename(view.id, name)} onDelete={() => onSavedViewDelete(view.id)} onMove={(sourceId) => onSavedViewMove(sourceId, view.id)} showTooltip={mode === "library" && isCompactSidebar} />)}
-            </div></div></div></section>
+            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner">
+              <SavedViewReorderList views={savedViews} activeViewId={activeSavedView} onSelect={onSavedViewChange} onRename={onSavedViewRename} onDelete={onSavedViewDelete} onMove={onSavedViewMove} showTooltip={mode === "library" && isCompactSidebar} />
+            </div></div></section>
           </>}
         </nav>
         {sidebarScrollbar.isVisible ? <div className="sidebar-scrollbar" aria-hidden="true" onPointerDown={handleScrollbarPointerDown} onPointerMove={handleScrollbarPointerMove} onPointerUp={stopScrollbarDrag} onPointerCancel={stopScrollbarDrag}><div className="sidebar-scrollbar-thumb" style={{ height: sidebarScrollbar.height, transform: `translateY(${sidebarScrollbar.top}px)` }} /></div> : null}

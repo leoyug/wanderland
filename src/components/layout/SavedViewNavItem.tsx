@@ -1,5 +1,5 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/src/components/ui/Button";
 import { Tooltip } from "@/src/components/ui/Tooltip";
@@ -13,11 +13,12 @@ interface SavedViewNavItemProps {
   onPress: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
-  onMove: (targetId: string) => void;
   showTooltip?: boolean;
+  isReorderDragging?: boolean;
+  onReorderPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }
 
-export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, onMove, showTooltip = false }: SavedViewNavItemProps) {
+export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, showTooltip = false, isReorderDragging = false, onReorderPointerDown }: SavedViewNavItemProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -87,26 +88,14 @@ export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDe
     }
   };
 
-  const handleDragStart = (event: DragEvent<HTMLDivElement>) => {
-    if (view.isSystem) return;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-wanderland-view", view.id);
-    event.currentTarget.classList.add("is-dragging");
-  };
-
   return (
     <div
       ref={rootRef}
-      className={cn("nav-entry saved-view-entry", isActive && "is-active", isMenuOpen && "has-open-menu")}
-      draggable={!view.isSystem && !isEditing}
-      onDragStart={handleDragStart}
-      onDragEnd={(event) => event.currentTarget.classList.remove("is-dragging")}
-      onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
-      onDrop={(event) => {
-        event.preventDefault();
-        const sourceId = event.dataTransfer.getData("application/x-wanderland-view");
-        if (sourceId && sourceId !== view.id) onMove(sourceId);
-      }}
+      data-saved-view-id={view.id}
+      data-reorderable={!view.isSystem && !isEditing ? "" : undefined}
+      className={cn("nav-entry saved-view-entry", isActive && "is-active", isMenuOpen && "has-open-menu", isReorderDragging && "is-dragging")}
+      onPointerDownCapture={(event) => { if (!view.isSystem && !isEditing) onReorderPointerDown?.(event); }}
+      onDragStart={(event) => event.preventDefault()}
     >
       {isEditing ? (
         <div className="saved-view-editor">

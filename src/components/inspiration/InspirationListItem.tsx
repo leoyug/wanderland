@@ -31,7 +31,7 @@ export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite
     }}>
       <div className="list-item-copy">
         <header className="list-item-source">
-          <SiteIcon src={item.siteIcon} pageUrl={item.url} />
+          <SiteIcon item={item} />
           <a className="card-url-link" href={item.url} target="_blank" rel="noreferrer" title={item.sourceLabel} onClick={(event) => event.stopPropagation()}>
             <span className="card-url-text">{presentation.sourceLabel}</span><RiArrowRightUpLine size={14} aria-hidden="true" />
           </a>
@@ -40,7 +40,7 @@ export function InspirationListItem({ item, onOpen, onTagClick, onToggleFavorite
         <TagSummary key={item.id} className="list-item-tags" tags={item.tags} onTagClick={onTagClick} />
       </div>
       {item.kind === "website" && hasCoverImage ? <div className="list-item-cover"><CoverArt item={item} /></div> : null}
-      {item.kind === "follow" ? <SiteIcon src={item.siteIcon} pageUrl={item.url} variant="avatar" /> : null}
+      {item.kind === "follow" ? <SiteIcon item={item} variant="avatar" /> : null}
       <FavoriteButton isFavorite={item.isFavorite} onToggle={onToggleFavorite} />
     </article>
   );

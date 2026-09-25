@@ -27,6 +27,7 @@ describe("local backup", () => {
       url: "https://example.com/page", canonicalUrl: "https://example.com/page", title: "Original",
       description: "Description", cleanHtml: "<p>Snapshot</p><script>bad()</script>", cleanText: "Snapshot", completeness: "complete",
     });
+    await source.savedItems.update(created.item.id, { siteIconAutoBackground: "dark", siteIconBackgroundOverride: "light" });
     const backup = parseBackup(JSON.parse(JSON.stringify(await createBackup(source))) as unknown);
     expect(backup.savedItems).toHaveLength(1);
     expect(backup.savedItems[0]?.cover.blob).toMatch(/^data:image\/png;base64,/);
@@ -46,6 +47,8 @@ describe("local backup", () => {
     expect(restored?.cover.blob).toBeInstanceOf(Blob);
     expect(await restored?.cover.blob?.text()).toBe("image-bytes");
     expect(restored?.tagIds).toHaveLength(1);
+    expect(restored?.siteIconAutoBackground).toBe("dark");
+    expect(restored?.siteIconBackgroundOverride).toBe("light");
     const snapshot = await target.snapshots.where("itemId").equals(restored!.id).first();
     expect(snapshot?.id).toBe(restored?.snapshotId);
     expect(snapshot?.cleanHtml).not.toContain("<script>");

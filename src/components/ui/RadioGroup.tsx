@@ -13,19 +13,20 @@ interface RadioGroupProps<T extends string> {
   options: ReadonlyArray<RadioOption<T>>;
   onChange: (value: T) => void;
   className?: string;
+  orientation?: "vertical" | "horizontal";
   children?: ReactNode;
+  renderOption?: (option: RadioOption<T>) => ReactNode;
 }
 
 // Intent UI radio-group anatomy, adapted to Wanderland's semantic CSS.
 // https://intentui.com/docs/components/forms/radio-group
-export function RadioGroup<T extends string>({ label, value, options, onChange, className }: RadioGroupProps<T>) {
+export function RadioGroup<T extends string>({ label, value, options, onChange, className, orientation = "vertical", renderOption }: RadioGroupProps<T>) {
   return (
-    <AriaRadioGroup className={className} value={value} onChange={(next) => onChange(next as T)}>
+    <AriaRadioGroup className={className} orientation={orientation} value={value} onChange={(next) => onChange(next as T)}>
       <Label>{label}</Label>
       {options.map((option) => (
-        <Radio key={option.value} value={option.value} className="radio-option">
-          <span className="radio-indicator" aria-hidden="true" />
-          <span><strong>{option.label}</strong>{option.description ? <Text slot="description">{option.description}</Text> : null}</span>
+        <Radio key={option.value} value={option.value} className={renderOption ? "radio-option radio-option-custom" : "radio-option"}>
+          {renderOption ? renderOption(option) : <><span className="radio-indicator" aria-hidden="true" /><span><strong>{option.label}</strong>{option.description ? <Text slot="description">{option.description}</Text> : null}</span></>}
         </Radio>
       ))}
     </AriaRadioGroup>

@@ -151,6 +151,9 @@ export class InspirationRepository {
             ? { ...item.cover, label: kindLabels[nextKind], motif: nextKind === "follow" ? "orb" : "type" }
             : item.cover,
         aiStatus: kindChanged ? "pending" : item.aiStatus,
+        siteIconBackgroundOverride: input.siteIconBackground === undefined
+          ? item.siteIconBackgroundOverride
+          : input.siteIconBackground === "auto" ? undefined : input.siteIconBackground,
         updatedAt: now,
       });
       if (kindChanged) {
@@ -440,6 +443,9 @@ export class InspirationRepository {
           descriptionSource: nextDescription.descriptionSource,
           cover: nextCover,
           siteIcon: capture.favicon ?? targetItem.siteIcon,
+          siteIconAutoBackground: capture.favicon && capture.favicon !== targetItem.siteIcon
+            ? undefined
+            : targetItem.siteIconAutoBackground,
           snapshotId,
           snapshotStatus: capture.completeness,
           updatedAt: now,
@@ -467,6 +473,14 @@ export class InspirationRepository {
         return { itemId: targetItem.id, mergedDuplicate: Boolean(duplicate) };
       },
     );
+  }
+
+  async setSiteIconAutoBackground(itemId: string, iconUrl: string, background: "dark" | undefined) {
+    await this.database.transaction("rw", this.database.savedItems, async () => {
+      const item = await this.database.savedItems.get(itemId);
+      if (!item || item.siteIcon !== iconUrl) return;
+      await this.database.savedItems.update(itemId, { siteIconAutoBackground: background, updatedAt: Date.now() });
+    });
   }
 
   async failCapture(itemId: string, reason: string) {
