@@ -41,15 +41,19 @@ const kindItems: Array<{ id: SavedItemKind; label: string; icon: ReactNode }> = 
   { id: "article", label: "文章", icon: <RiArticleLine size={17} aria-hidden="true" /> },
   { id: "follow", label: "关注源", icon: <RiUserFollowLine size={17} aria-hidden="true" /> },
 ];
-const settingsItems: Array<{ id: SettingsSection; label: string; icon: ReactNode }> = [
-  { id: "appearance", label: "外观", icon: <RiPaletteLine size={17} aria-hidden="true" /> },
-  { id: "tags", label: "标签", icon: <RiPriceTag3Line size={17} aria-hidden="true" /> },
-  { id: "ai", label: "AI", icon: <RiSparkling2Line size={17} aria-hidden="true" /> },
-  { id: "bookmarks", label: "导入书签", icon: <RiBookmarkLine size={17} aria-hidden="true" /> },
-  { id: "backup", label: "备份与恢复", icon: <RiDatabase2Line size={17} aria-hidden="true" /> },
-  { id: "archive", label: "归档", icon: <RiArchiveLine size={17} aria-hidden="true" /> },
-  { id: "digest", label: "内容简报", icon: <RiNewspaperLine size={17} aria-hidden="true" /> },
-  { id: "about", label: "关于", icon: <RiInformationLine size={17} aria-hidden="true" /> },
+const settingsGroups: Array<{ label: string; items: Array<{ id: SettingsSection; label: string; icon: ReactNode }> }> = [
+  { label: "个人", items: [
+    { id: "tags", label: "标签", icon: <RiPriceTag3Line size={17} aria-hidden="true" /> },
+    { id: "archive", label: "归档", icon: <RiArchiveLine size={17} aria-hidden="true" /> },
+    { id: "digest", label: "内容简报", icon: <RiNewspaperLine size={17} aria-hidden="true" /> },
+    { id: "ai", label: "AI", icon: <RiSparkling2Line size={17} aria-hidden="true" /> },
+  ] },
+  { label: "通用", items: [
+    { id: "appearance", label: "外观", icon: <RiPaletteLine size={17} aria-hidden="true" /> },
+    { id: "bookmarks", label: "导入书签", icon: <RiBookmarkLine size={17} aria-hidden="true" /> },
+    { id: "backup", label: "备份与恢复", icon: <RiDatabase2Line size={17} aria-hidden="true" /> },
+    { id: "about", label: "关于", icon: <RiInformationLine size={17} aria-hidden="true" /> },
+  ] },
 ];
 
 export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onOpenSettings, mode = "library", activeSettingsSection = "appearance", onSettingsSectionChange, onBackToLibrary, children }: AppShellProps) {
@@ -210,7 +214,7 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
         {mode === "library" && isCompactSidebar ? <Tooltip content={t("返回首页")} placement="right" offset={10} className="sidebar-tooltip-bubble">{brandButton}</Tooltip> : brandButton}
         <div className="sidebar-navigation-wrap">
         <nav ref={navigationRef} aria-label={mode === "settings" ? t("设置导航") : t("收藏库导航")} className={`sidebar-navigation ${mode === "settings" ? "settings-navigation" : ""}`}>
-          {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={t(label)} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? t(label) : undefined} />)}</div> : <>
+          {mode === "settings" ? settingsGroups.map(({ label, items: groupItems }) => <section className="settings-nav-group" key={label}><p className="nav-label">{t(label)}</p><div className="nav-list settings-nav-list">{groupItems.map(({ id, label: itemLabel, icon }) => <SidebarNavItem key={id} icon={icon} label={t(itemLabel)} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? t(itemLabel) : undefined} />)}</div></section>) : <>
             <section><p className="nav-label">{t("收藏库")}</p><div className="nav-list">{renderScope("all", t("全部"), <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", t("未处理"), <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", t("星标"), <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
             <section><p className="nav-label">{t("内容列表")}</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, t(label), icon)}</span>)}</div></section>
             <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">{t("快捷视图")}</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? t("收起快捷视图") : t("展开快捷视图")} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner">

@@ -1,4 +1,4 @@
-import { RiCloseLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
+import { RiArrowRightUpLine, RiCloseLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
 import { rise } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -25,6 +25,8 @@ import { formatUiDate } from "@/src/i18n/date";
 import { version as packageVersion } from "../../../package.json";
 
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
+const UPDATE_CHECK_CACHE_MS = 15 * 60 * 1000;
+let recentUpdateCheck: { installedVersion: string; status: "no_update" | "update_available"; availableVersion?: string; checkedAt: number } | null = null;
 const emptySummary: AiTaskSummary = { pending: 0, running: 0, failed: 0, complete: 0 };
 const apiKeyStorageOptions = [
   { value: "session" as const, label: "当前会话", description: "退出浏览器后需重新填写。" },
@@ -182,9 +184,9 @@ function TagsSettings() {
   }, [isSearchOpen, query]);
   const normalizedQuery = query.trim().normalize("NFKC").toLocaleLowerCase();
   const visibleTags = normalizedQuery
-    ? tags.filter((tag) => [tag.name, ...tag.aliases].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)))
+    ? tags.filter((tag) => tag.name.toLocaleLowerCase().includes(normalizedQuery))
     : tags;
-  const save = async (id: string) => { await inspirationRepository.renameTag(id, name); setEditingId(undefined); showToast(t("标签已保存"), { tone: "success" }); };
+  const save = async (id: string) => { const result = await inspirationRepository.renameTag(id, name); setEditingId(undefined); showToast(t(result === "merged" ? "标签已合并" : "标签已保存"), { tone: "success" }); };
   const deleteTagItem = async (id: string) => { await inspirationRepository.deleteTag(id); showToast(t("标签已删除"), { tone: "success" }); };
   const closeSearch = () => { setIsSearchOpen(false); setQuery(""); };
   const tagSearchAction = isSearchOpen ? <SearchField className="tag-search-field" aria-label={t("搜索标签")} value={query} onChange={setQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeSearch(); } }}>
@@ -196,12 +198,12 @@ function TagsSettings() {
     <SettingsHeader title={t("标签")} description={t("统一管理收藏库中的标签，重命名为已有标签会自动合并。")} />
     <section className="settings-form-section">
       <div className="settings-section-heading-row">
-        <SettingsSectionHeading title={t("已保存标签")} description={t("保留原名称作为别名，已有收藏项会同步更新。")} />
+        <SettingsSectionHeading title={t("已保存标签")} description={t("重命名为已有标签会自动合并，已有收藏项会同步更新。")} />
         <div ref={searchActionRef} className="settings-section-heading-action">{tagSearchAction}</div>
       </div>
       <SettingsCard className="tag-settings-list">
         {visibleTags.length ? visibleTags.map((tag) => <div className="settings-list-row" key={tag.id}>
-          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={tf("重命名 {name}", { name: tag.name })} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount}{t(" 个收藏项")}{tag.aliases.length ? tf(" · 别名 {names}", { names: tag.aliases.join("、") }) : ""}</span></div>}
+          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={tf("重命名 {name}", { name: tag.name })} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount}{t(" 个收藏项")}</span></div>}
           <div className="settings-list-actions">{editingId === tag.id ? <Button size="sm" variant="primary" onPress={() => void save(tag.id)}>{t("保存")}</Button> : <Button size="sm" variant="secondary" onPress={() => { setEditingId(tag.id); setName(tag.name); setDeleteId(undefined); }}>{t("重命名")}</Button>}<Button size="sm" variant="dangerGhost" onPress={() => setDeleteId(tag.id)}>{t("删除")}</Button></div>
         </div>) : <div className="settings-empty-row">{normalizedQuery ? t("没有匹配的标签。") : t("还没有标签。可在收藏项详情中添加。")}</div>}
       </SettingsCard>
@@ -374,7 +376,7 @@ function ArchiveSettings() {
     if (!deleted) return;
     showUndoToast(t("已删除收藏项"), { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
   };
-  return <div className="settings-form"><SettingsHeader title={t("归档")} description={t("归档项不会出现在收藏库中，可随时恢复或永久删除。")} /><section className="settings-form-section"><SettingsSectionHeading title={t("已归档内容")} description={t("恢复后会回到原来的收藏库范围。")} /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatUiDate(item.archivedAt!, true)}</span></div><div className="settings-list-actions"><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>{t("删除")}</Button><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>{t("取消归档")}</Button></div></article>) : <div className="settings-empty-row">{t("还没有归档内容。")}</div>}</SettingsCard></section></div>;
+  return <div className="settings-form"><SettingsHeader title={t("归档")} description={t("归档项不会出现在收藏库中，可随时恢复或永久删除。")} /><section className="settings-form-section"><SettingsSectionHeading title={t("已归档内容")} description={t("恢复后会回到原来的收藏库范围。")} /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatUiDate(item.archivedAt!, true)}</span></div><div className="settings-list-actions"><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>{t("恢复")}</Button><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>{t("删除")}</Button></div></article>) : <div className="settings-empty-row">{t("还没有归档内容。")}</div>}</SettingsCard></section></div>;
 }
 
 const themeOptions: ReadonlyArray<{ value: ThemePreference; label: string }> = [
@@ -426,9 +428,44 @@ function AppearanceSettings() {
 }
 
 function AboutSettings() {
+  const { showToast } = useToast();
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const version = typeof browser !== "undefined" && browser.runtime?.getManifest
     ? browser.runtime.getManifest().version
     : packageVersion;
+  const showUpdateResult = (result: { status: "no_update" | "update_available"; availableVersion?: string }) => {
+    if (result.status === "no_update") {
+      showToast(t("已经是最新版本"), { tone: "success" });
+    } else {
+      showToast(result.availableVersion
+        ? tf("发现新版本 v{version}，请关闭扩展页面等待浏览器更新。", { version: result.availableVersion })
+        : t("发现新版本，请关闭扩展页面等待浏览器更新。"), { tone: "info" });
+    }
+  };
+  const checkForUpdates = async () => {
+    if (typeof browser === "undefined" || !browser.runtime?.requestUpdateCheck) {
+      showToast(t("请在已安装的浏览器扩展中检查更新。"), { tone: "info" });
+      return;
+    }
+    if (recentUpdateCheck && recentUpdateCheck.installedVersion === version && Date.now() - recentUpdateCheck.checkedAt < UPDATE_CHECK_CACHE_MS) {
+      showUpdateResult(recentUpdateCheck);
+      return;
+    }
+    setIsCheckingUpdate(true);
+    try {
+      const result = await browser.runtime.requestUpdateCheck();
+      if (result.status === "throttled") {
+        showToast(t("暂时无法确认是否有更新，请稍后再试。"), { tone: "warning" });
+        return;
+      }
+      recentUpdateCheck = { installedVersion: version, status: result.status, availableVersion: result.version, checkedAt: Date.now() };
+      showUpdateResult(recentUpdateCheck);
+    } catch {
+      showToast(t("检查更新失败，请稍后重试。"), { tone: "danger" });
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   return <div className="settings-form about-settings">
     <SettingsHeader title={t("关于")} />
@@ -438,14 +475,27 @@ function AboutSettings() {
       <p>{t("在浏览器内收藏、整理并重新发现网站、文章与关注源。")}</p>
     </div>
     <SettingsCard className="about-details">
-      <SettingsRow title={t("开发者")} control="Webloom" />
-      <SettingsRow title={t("应用版本")} description={t("数据只保存在当前浏览器。")} control={`WEBLOOM v${version}`} />
+      <SettingsRow title={t("开发者")} description="Leo" control={<a className="button button-secondary" href="https://github.com/leoyug" target="_blank" rel="noopener noreferrer">{t("前往主页")} <RiArrowRightUpLine size={16} aria-hidden="true" /></a>} />
+      <SettingsRow title={t("当前版本")} description={tf("WEBLOOM v{version} · 数据只保存在当前浏览器。", { version })} control={<Button variant="secondary" isDisabled={isCheckingUpdate} onPress={() => void checkForUpdates()}>{isCheckingUpdate ? t("正在检查…") : t("检查更新")}</Button>} />
+      <SettingsRow title={t("支持")} control={<div className="about-support-links">
+        <a href="https://github.com/leoyug/wanderland" target="_blank" rel="noopener noreferrer">GitHub <RiArrowRightUpLine size={16} aria-hidden="true" /></a>
+        <a href="https://github.com/leoyug/wanderland/issues" target="_blank" rel="noopener noreferrer">{t("反馈问题")} <RiArrowRightUpLine size={16} aria-hidden="true" /></a>
+      </div>} />
     </SettingsCard>
   </div>;
 }
 
 function PlaceholderSettings() {
-  return <div className="settings-form"><SettingsHeader title={t("内容简报")} description={t("把收藏库整理成可回顾的内容简报。")} /><section className="settings-form-section"><SettingsSectionHeading title={t("内容简报")} description={t("把收藏库整理成可回顾的内容简报。")} /><SettingsCard><SettingsRow title={t("内容简报")} description={t("内容简报将在后续版本开放。")} /></SettingsCard></section></div>;
+  return <div className="settings-form">
+    <SettingsHeader title={t("内容简报")} description={t("定期回顾新收藏，发现值得继续探索的内容。")} />
+    <section className="settings-form-section">
+      <SettingsSectionHeading title={t("简报类型")} description={t("生成与往期记录将在后续版本开放。")} />
+      <SettingsCard>
+        <SettingsRow title={t("今日总结")} description={t("从今天新增的收藏中提炼主题，生成一份简短总结。")} control={<div className="settings-list-actions"><Button variant="secondary" isDisabled>{t("生成")}</Button><Button variant="secondary" isDisabled>{t("往期")}</Button></div>} />
+        <SettingsRow title={t("一周简报")} description={t("每周自动汇总新收藏，并穿插值得重温的旧内容。")} control={<Button variant="secondary" isDisabled>{t("往期")}</Button>} />
+      </SettingsCard>
+    </section>
+  </div>;
 }
 
 export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void }) {

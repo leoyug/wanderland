@@ -241,8 +241,12 @@ export class InspirationRepository {
     const tag = await this.database.tags.get(tagId);
     if (!tag) throw new Error("标签不存在");
     const collision = await this.database.tags.where("normalizedName").equals(normalizedName).first();
-    if (collision && collision.id !== tagId) return this.mergeTags(tagId, collision.id);
+    if (collision && collision.id !== tagId) {
+      await this.mergeTags(tagId, collision.id);
+      return "merged" as const;
+    }
     await this.database.tags.update(tagId, { name: normalizedName, normalizedName, updatedAt: Date.now() });
+    return "renamed" as const;
   }
 
   async mergeTags(sourceId: string, targetId: string) {

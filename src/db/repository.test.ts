@@ -334,12 +334,13 @@ describe("InspirationRepository", () => {
     const tags = await repository.listTags();
     const ui = tags.find((tag) => tag.name === "UI")!;
     const interfaceTag = tags.find((tag) => tag.name === "界面")!;
-    await repository.renameTag(ui.id, "界面");
+    expect(await repository.renameTag(ui.id, "界面")).toBe("merged");
     await repository.completeCapture(created.item.id, createCapture());
 
     expect(await database.tags.get(ui.id)).toBeUndefined();
     expect((await database.savedItems.get(created.item.id))?.tagIds).toEqual([interfaceTag.id]);
     expect((await database.tags.get(interfaceTag.id))?.aliases).toContain("UI");
+    expect(await repository.renameTag(interfaceTag.id, "界面设计")).toBe("renamed");
 
     await repository.deleteSavedItem(created.item.id);
     expect(await database.savedItems.count()).toBe(0);

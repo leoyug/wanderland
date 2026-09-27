@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
+import { RiLightbulbFlashLine, RiTimerLine } from "@remixicon/react";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { reorderSavedViewIds, savedViewInsertionTarget } from "@/src/lib/reorderSavedViews";
 import { SavedViewNavItem } from "./SavedViewNavItem";
-import { SidebarIcon } from "./SidebarIcon";
 
 interface SavedViewReorderListProps {
   views: LibrarySavedView[];
@@ -220,9 +220,10 @@ export function SavedViewReorderList({ views, activeViewId, onSelect, onRename, 
       {displayedIds.map((id) => {
         const view = viewsById.get(id);
         if (!view) return null;
-        return <SavedViewNavItem key={id} view={view} icon={<SidebarIcon src={`/assets/sidebar/${view.isSystem ? "timer" : "lightbulb"}.svg`} />} isActive={activeViewId === id} onPress={() => { if (!suppressClickRef.current) onSelect(id); }} onRename={(name) => onRename(id, name)} onDelete={() => onDelete(id)} showTooltip={showTooltip} isReorderDragging={draggingId === id} onReorderPointerDown={(event) => handlePointerDown(id, event)} />;
+        const icon = view.isSystem ? <RiTimerLine size={16} aria-hidden="true" /> : <RiLightbulbFlashLine size={16} aria-hidden="true" />;
+        return <SavedViewNavItem key={id} view={view} icon={icon} isActive={activeViewId === id} onPress={() => { if (!suppressClickRef.current) onSelect(id); }} onRename={(name) => onRename(id, name)} onDelete={() => onDelete(id)} showTooltip={showTooltip} isReorderDragging={draggingId === id} onReorderPointerDown={(event) => handlePointerDown(id, event)} />;
       })}
     </div>
-    {overlay && draggedView ? createPortal(<div ref={overlayRef} className="saved-view-drag-overlay" style={overlay} aria-hidden="true"><SidebarIcon src="/assets/sidebar/lightbulb.svg" /><span>{draggedView.name}</span></div>, document.body) : null}
+    {overlay && draggedView ? createPortal(<div ref={overlayRef} className="saved-view-drag-overlay" style={overlay} aria-hidden="true">{draggedView.isSystem ? <RiTimerLine size={16} /> : <RiLightbulbFlashLine size={16} />}<span>{draggedView.name}</span></div>, document.body) : null}
   </>;
 }
