@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/src/lib/cn";
+import { t } from "@/src/i18n/ui";
 
 export type ToastTone = "neutral" | "info" | "success" | "warning" | "danger";
 
@@ -208,7 +209,7 @@ function Toast({
             </button>
           ) : null}
           {showClose ? (
-            <button type="button" className="toast-close" aria-label="关闭通知" onClick={() => onDismiss(toast.id)}>
+            <button type="button" className="toast-close" aria-label={t("关闭通知")} onClick={() => onDismiss(toast.id)}>
               <RiCloseLine size={18} />
             </button>
           ) : null}
@@ -264,7 +265,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showUndoToast = useCallback((message: string, options: { subject?: string; onUndo: () => void | Promise<void> }) => {
     const title = <>{message}{options.subject ? <> <strong className="toast-undo-subject">“{options.subject}”</strong></> : null}</>;
-    return showToast(title, { shortcut: "undo", action: { label: "撤回", onPress: options.onUndo } });
+    return showToast(title, { shortcut: "undo", action: { label: t("撤回"), onPress: options.onUndo } });
   }, [showToast]);
 
   const updateToast = useCallback((id: number, title: ReactNode, options: ToastUpdateOptions = {}) => {
@@ -325,7 +326,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
-      <div ref={viewportRef} className="toast-viewport" role="region" aria-label="通知">
+      <div ref={viewportRef} className="toast-viewport" role="region" aria-label={t("通知")}>
         {toasts.slice(0, MAX_VISIBLE_TOASTS).map((toast) => (
           <Toast key={toast.id} toast={toast} onOpen={openToast} onDismiss={dismissToast} />
         ))}

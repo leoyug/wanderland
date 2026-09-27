@@ -10,6 +10,8 @@ import { Field } from "@/src/components/ui/Field";
 import { TagInput } from "@/src/components/ui/TagInput";
 import type { CaptureResponse, ExtensionRequest } from "@/src/capture/types";
 import type { SavedItemKind, Tag } from "@/src/domain/inspiration";
+import { t } from "@/src/i18n/ui";
+import { useAppLanguage } from "@/src/i18n/useLanguage";
 
 const kindOptions = [
   { id: "website", label: "网站", icon: RiGlobalLine },
@@ -21,7 +23,7 @@ type SubmitState = "ready" | "saving" | "success" | "error";
 
 const messageError = (error: unknown): CaptureResponse => ({
   ok: false,
-  error: error instanceof Error ? error.message : "扩展通信失败，请刷新当前页面后重试。",
+  error: error instanceof Error ? t(error.message) : t("扩展通信失败，请刷新当前页面后重试。"),
 });
 
 interface CapturePanelProps {
@@ -30,6 +32,7 @@ interface CapturePanelProps {
 }
 
 export function CapturePanel({ page, onClose }: CapturePanelProps) {
+  useAppLanguage();
   const [kind, setKind] = useState<SavedItemKind>("website");
   const [description, setDescription] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -94,30 +97,30 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
   };
 
   const statusText = result?.ok
-    ? result.created ? "收藏项已保存" : "收藏项已存在，快照已更新"
-    : result?.error;
-  const resultTitle = state === "saving" ? "正在保存收藏项" : statusText;
+    ? result.created ? t("收藏项已保存") : t("收藏项已存在，快照已更新")
+    : result?.error ? t(result.error) : undefined;
+  const resultTitle = state === "saving" ? t("正在保存收藏项") : statusText;
   const resultDescription = state === "saving"
-    ? "正在保存标题、描述与正文快照。"
+    ? t("正在保存标题、描述与正文快照。")
     : result?.ok && result.completeness === "complete"
-      ? "标题、描述与正文快照已保存。"
-      : "页面基本信息已保存，快照可能不完整。";
+      ? t("标题、描述与正文快照已保存。")
+      : t("页面基本信息已保存，快照可能不完整。");
 
   return (
-    <section className={`capture-panel${state === "success" ? " is-success" : ""}`} role="dialog" aria-modal="false" aria-label="收藏当前页面">
+    <section className={`capture-panel${state === "success" ? " is-success" : ""}`} role="dialog" aria-modal="false" aria-label={t("收藏当前页面")}>
       <header className="capture-header">
         <div className="capture-brand">
           <img src={browser.runtime.getURL("/assets/wordmark.svg")} alt="WEBLOOM" />
         </div>
         <div className="capture-header-actions">
-          <button type="button" className="capture-library-link" onClick={() => void openDashboard()}>打开收藏库</button>
-          <button type="button" className="capture-close" onClick={onClose} aria-label="关闭收藏面板" autoFocus><RiCloseLine size={19} /></button>
+          <button type="button" className="capture-library-link" onClick={() => void openDashboard()}>{t("打开收藏库")}</button>
+          <button type="button" className="capture-close" onClick={onClose} aria-label={t("关闭收藏面板")} autoFocus><RiCloseLine size={19} /></button>
         </div>
       </header>
 
       <section className="capture-page">
-        <span>当前页面</span>
-        <strong>{page.title || "当前页面"}</strong>
+        <span>{t("当前页面")}</span>
+        <strong>{page.title || t("当前页面")}</strong>
         <small title={page.url}>{page.url}</small>
       </section>
 
@@ -135,19 +138,19 @@ export function CapturePanel({ page, onClose }: CapturePanelProps) {
         </section>
       ) : (
         <>
-          <div className="capture-kinds" role="group" aria-label="内容类型">
-            {kindOptions.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={kind === id} onClick={() => setKind(id)}><Icon size={16} /><span>{label}</span></button>)}
+          <div className="capture-kinds" role="group" aria-label={t("内容类型")}>
+            {kindOptions.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={kind === id} onClick={() => setKind(id)}><Icon size={16} /><span>{t(label)}</span></button>)}
           </div>
-          <Field className="capture-description" label="描述（可选）" value={description} onChange={setDescription} placeholder="不填写时，优先使用网页描述" multiline rows={3} />
-          <TagInput label="标签（可选）" tags={selectedTags} options={availableTags} onChange={setSelectedTags} placement="bottom" />
-          {state === "error" ? <div className="capture-error" role="alert"><p>{statusText}</p>{result && !result.ok && result.itemId ? <button type="button" className="button button-secondary button-sm" onClick={() => void retry()}><RiRefreshLine size={15} />重试采集</button> : null}</div> : null}
+          <Field className="capture-description" label={t("描述（可选）")} value={description} onChange={setDescription} placeholder={t("不填写时，优先使用网页描述")} multiline rows={3} />
+          <TagInput label={t("标签（可选）")} tags={selectedTags} options={availableTags} onChange={setSelectedTags} placement="bottom" />
+          {state === "error" ? <div className="capture-error" role="alert"><p>{statusText}</p>{result && !result.ok && result.itemId ? <button type="button" className="button button-secondary button-sm" onClick={() => void retry()}><RiRefreshLine size={15} />{t("重试采集")}</button> : null}</div> : null}
         </>
       )}
 
       <footer className="capture-footer">
         {state === "success"
-          ? <button type="button" className="button button-primary button-md" onClick={() => void openDashboard()}>查看收藏项</button>
-          : <button type="button" className="button button-primary button-md" disabled={state === "saving"} onClick={() => void submit()}>{state === "saving" ? "正在保存与采集…" : "添加当前页"}</button>}
+          ? <button type="button" className="button button-primary button-md" onClick={() => void openDashboard()}>{t("查看收藏项")}</button>
+          : <button type="button" className="button button-primary button-md" disabled={state === "saving"} onClick={() => void submit()}>{state === "saving" ? t("正在保存与采集…") : t("添加当前页")}</button>}
       </footer>
     </section>
   );

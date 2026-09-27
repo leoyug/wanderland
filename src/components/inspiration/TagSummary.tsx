@@ -1,6 +1,7 @@
 import { useState, type KeyboardEventHandler, type MouseEventHandler } from "react";
 import { Badge } from "@/src/components/ui/Badge";
 import { cn } from "@/src/lib/cn";
+import { t, tf } from "@/src/i18n/ui";
 
 const TAG_PREVIEW_LIMIT = 3;
 
@@ -44,9 +45,9 @@ export function TagSummary({ tags, onTagClick, className }: TagSummaryProps) {
           onPress={handleToggle}
           onKeyDown={stopCardShortcut}
           aria-expanded={isExpanded}
-          aria-label={isExpanded ? "收起标签" : `展开其余 ${tags.length - TAG_PREVIEW_LIMIT} 个标签`}
+          aria-label={isExpanded ? t("收起标签") : tf("展开其余 {count} 个标签", { count: tags.length - TAG_PREVIEW_LIMIT })}
         >
-          {isExpanded ? "收起" : `+${tags.length - TAG_PREVIEW_LIMIT}`}
+          {isExpanded ? t("收起") : `+${tags.length - TAG_PREVIEW_LIMIT}`}
         </Badge>
       ) : null}
     </footer>

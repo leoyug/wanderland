@@ -1,4 +1,4 @@
-import { RiCloseLine, RiInformationLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
+import { RiCloseLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
 import { rise } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -18,6 +18,11 @@ import { useToast } from "@/src/components/ui/Toast";
 import { createBackup, parseBackup, restoreBackup, type Backup } from "@/src/db/backup";
 import { inspirationRepository, type DeletedSavedItem } from "@/src/db/repository";
 import { getThemePreferenceSnapshot, setThemePreference, subscribeThemePreference, type ThemePreference } from "@/src/lib/themePreferences";
+import { setLanguagePreference, type LanguagePreference } from "@/src/i18n/language";
+import { useLanguagePreference } from "@/src/i18n/useLanguage";
+import { t, tf } from "@/src/i18n/ui";
+import { formatUiDate } from "@/src/i18n/date";
+import { version as packageVersion } from "../../../package.json";
 
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
 const emptySummary: AiTaskSummary = { pending: 0, running: 0, failed: 0, complete: 0 };
@@ -33,13 +38,13 @@ const aiProviderOptions = [
 
 function sendExtensionMessage<T>(request: ExtensionRequest) {
   if (typeof browser === "undefined" || !browser.runtime?.sendMessage) {
-    return Promise.reject(new Error("AI 设置需要在已加载的浏览器扩展页面中使用。"));
+    return Promise.reject(new Error(t("AI 设置需要在已加载的浏览器扩展页面中使用。")));
   }
   return browser.runtime.sendMessage(request) as Promise<T>;
 }
 
-function SettingsHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return <header className="settings-page-header"><div><h1>{title}</h1><p>{description}</p></div>{action}</header>;
+function SettingsHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
+  return <header className="settings-page-header"><div><h1>{title}</h1>{description ? <p>{description}</p> : null}</div>{action}</header>;
 }
 
 function SettingsSectionHeading({ title, description }: { title: string; description: string }) {
@@ -109,7 +114,7 @@ function BookmarkSettings({ onImported }: { onImported?: () => void }) {
   const submit = async () => {
     const urls = extractBookmarkUrls(value);
     if (urls.length === 0) {
-      setError("书签 HTML 中没有找到可导入的链接");
+      setError(t("书签 HTML 中没有找到可导入的链接"));
       return;
     }
     setIsSubmitting(true);
@@ -117,40 +122,40 @@ function BookmarkSettings({ onImported }: { onImported?: () => void }) {
     try {
       const result = await importBookmarkUrls(urls, enrichMetadata);
       if (result.added === 0) {
-        setError(`没有新增内容，${result.skipped} 个链接已存在。`);
+        setError(tf("没有新增内容，{count} 个链接已存在。", { count: result.skipped }));
         return;
       }
       setValue("");
-      setResult(`导入完成：新增 ${result.added} 个收藏项，跳过 ${result.skipped} 个已有项。`);
-      showUndoToast(`已添加 ${result.added} 个收藏项`, {
+      setResult(tf("导入完成：新增 {added} 个收藏项，跳过 {skipped} 个已有项。", { added: result.added, skipped: result.skipped }));
+      showUndoToast(tf("已添加 {count} 个收藏项", { count: result.added }), {
         onUndo: async () => {
           try {
             await inspirationRepository.deleteSavedItems(result.addedItems.map((item) => item.id));
-            setResult(`已撤回本次导入的 ${result.added} 个收藏项。`);
-            showToast("已撤回批量添加", { tone: "success" });
+            setResult(tf("已撤回本次导入的 {count} 个收藏项。", { count: result.added }));
+            showToast(t("已撤回批量添加"), { tone: "success" });
           } catch {
-            showToast("撤回添加失败，请稍后重试", { tone: "danger" });
+            showToast(t("撤回添加失败，请稍后重试"), { tone: "danger" });
           }
         },
       });
       onImported?.();
     } catch {
-      setError("导入未能写入本地收藏库，请重试。");
+      setError(t("导入未能写入本地收藏库，请重试。"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return <form className="settings-form" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-    <SettingsHeader title="导入书签" description="导入浏览器保存的书签，描述与标签可在后台逐步补全。" action={<Button type="submit" variant="primary" size="sm" isDisabled={isSubmitting}>{isSubmitting ? "正在导入…" : "开始导入"}</Button>} />
+    <SettingsHeader title={t("导入书签")} description={t("导入浏览器保存的书签，描述与标签可在后台逐步补全。")} action={<Button type="submit" variant="primary" size="sm" isDisabled={isSubmitting}>{isSubmitting ? t("正在导入…") : t("开始导入")}</Button>} />
     <section className="settings-form-section">
-      <SettingsSectionHeading title="书签内容" description="书签会作为“网站”类型保存，已存在的规范化链接会自动跳过。" />
-      <label className="settings-textarea-label"><span className="sr-only">书签 HTML 内容</span><textarea value={value} onChange={(event) => setValue(event.target.value)} placeholder="粘贴浏览器导出的书签 HTML 内容" autoFocus /></label>
+      <SettingsSectionHeading title={t("书签内容")} description={t("书签会作为“网站”类型保存，已存在的规范化链接会自动跳过。")} />
+      <label className="settings-textarea-label"><span className="sr-only">{t("书签 HTML 内容")}</span><textarea value={value} onChange={(event) => setValue(event.target.value)} placeholder={t("粘贴浏览器导出的书签 HTML 内容")} autoFocus /></label>
     </section>
     <section className="settings-form-section">
-      <SettingsSectionHeading title="补全收藏项信息" description="浏览器将一次确认本批次涉及的网站。" />
+      <SettingsSectionHeading title={t("补全收藏项信息")} description={t("浏览器将一次确认本批次涉及的网站。")} />
       <SettingsCard className="settings-option-card">
-        <Switch className="settings-option-switch" label="信息与封面" description="只读取标题、描述、favicon和公开 OG 封面，完成后立即撤销全部访问权限。" isSelected={enrichMetadata} onChange={setEnrichMetadata} />
+        <Switch className="settings-option-switch" label={t("信息与封面")} description={t("只读取标题、描述、favicon和公开 OG 封面，完成后立即撤销全部访问权限。")} isSelected={enrichMetadata} onChange={setEnrichMetadata} />
       </SettingsCard>
       {error ? <p className="form-error" role="alert">{error}</p> : null}{result ? <p className="form-success" role="status">{result}</p> : null}
     </section>
@@ -160,39 +165,48 @@ function BookmarkSettings({ onImported }: { onImported?: () => void }) {
 function TagsSettings() {
   const { showToast } = useToast();
   const tags = useLiveQuery(() => inspirationRepository.listTags(), []) ?? [];
+  const searchActionRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string>();
   const [name, setName] = useState("");
   const [deleteId, setDeleteId] = useState<string>();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const deleteTag = tags.find((tag) => tag.id === deleteId);
+  useEffect(() => {
+    if (!isSearchOpen || query.length > 0) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!searchActionRef.current?.contains(event.target as Node)) setIsSearchOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+  }, [isSearchOpen, query]);
   const normalizedQuery = query.trim().normalize("NFKC").toLocaleLowerCase();
   const visibleTags = normalizedQuery
     ? tags.filter((tag) => [tag.name, ...tag.aliases].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)))
     : tags;
-  const save = async (id: string) => { await inspirationRepository.renameTag(id, name); setEditingId(undefined); showToast("标签已保存", { tone: "success" }); };
-  const deleteTagItem = async (id: string) => { await inspirationRepository.deleteTag(id); showToast("标签已删除", { tone: "success" }); };
+  const save = async (id: string) => { await inspirationRepository.renameTag(id, name); setEditingId(undefined); showToast(t("标签已保存"), { tone: "success" }); };
+  const deleteTagItem = async (id: string) => { await inspirationRepository.deleteTag(id); showToast(t("标签已删除"), { tone: "success" }); };
   const closeSearch = () => { setIsSearchOpen(false); setQuery(""); };
-  const tagSearchAction = isSearchOpen ? <SearchField className="tag-search-field" aria-label="搜索标签" value={query} onChange={setQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeSearch(); } }}>
+  const tagSearchAction = isSearchOpen ? <SearchField className="tag-search-field" aria-label={t("搜索标签")} value={query} onChange={setQuery} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeSearch(); } }}>
     <RiSearchLine size={16} aria-hidden="true" />
-    <SearchInput autoFocus aria-label="搜索标签" placeholder="搜索标签" />
-    {query ? <Button size="icon" variant="ghost" aria-label="清除标签搜索" onPress={() => setQuery("")}><RiCloseLine size={16} /></Button> : null}
-  </SearchField> : <Button size="sm" variant="secondary" onPress={() => setIsSearchOpen(true)}><RiSearchLine size={15} aria-hidden="true" />搜索标签</Button>;
+    <SearchInput autoFocus aria-label={t("搜索标签")} placeholder={t("搜索标签")} />
+    {query ? <Button size="icon" variant="ghost" aria-label={t("清除标签搜索")} onPress={() => setQuery("")}><RiCloseLine size={16} /></Button> : null}
+  </SearchField> : <Button size="sm" variant="secondary" onPress={() => setIsSearchOpen(true)}><RiSearchLine size={15} aria-hidden="true" />{t("搜索标签")}</Button>;
   return <><div className="settings-form">
-    <SettingsHeader title="标签" description="统一管理收藏库中的标签，重命名为已有标签会自动合并。" />
+    <SettingsHeader title={t("标签")} description={t("统一管理收藏库中的标签，重命名为已有标签会自动合并。")} />
     <section className="settings-form-section">
       <div className="settings-section-heading-row">
-        <SettingsSectionHeading title="已保存标签" description="保留原名称作为别名，已有收藏项会同步更新。" />
-        <div className="settings-section-heading-action">{tagSearchAction}</div>
+        <SettingsSectionHeading title={t("已保存标签")} description={t("保留原名称作为别名，已有收藏项会同步更新。")} />
+        <div ref={searchActionRef} className="settings-section-heading-action">{tagSearchAction}</div>
       </div>
       <SettingsCard className="tag-settings-list">
         {visibleTags.length ? visibleTags.map((tag) => <div className="settings-list-row" key={tag.id}>
-          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={`重命名 ${tag.name}`} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount} 个收藏项{tag.aliases.length ? ` · 别名 ${tag.aliases.join("、")}` : ""}</span></div>}
-          <div className="settings-list-actions">{editingId === tag.id ? <Button size="sm" variant="primary" onPress={() => void save(tag.id)}>保存</Button> : <Button size="sm" variant="secondary" onPress={() => { setEditingId(tag.id); setName(tag.name); setDeleteId(undefined); }}>重命名</Button>}<Button size="sm" variant="dangerGhost" onPress={() => setDeleteId(tag.id)}>删除</Button></div>
-        </div>) : <div className="settings-empty-row">{normalizedQuery ? "没有匹配的标签。" : "还没有标签。可在收藏项详情中添加。"}</div>}
+          {editingId === tag.id ? <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void save(tag.id); if (event.key === "Escape") setEditingId(undefined); }} aria-label={tf("重命名 {name}", { name: tag.name })} /> : <div><strong>{tag.name}</strong><span>{tag.usageCount}{t(" 个收藏项")}{tag.aliases.length ? tf(" · 别名 {names}", { names: tag.aliases.join("、") }) : ""}</span></div>}
+          <div className="settings-list-actions">{editingId === tag.id ? <Button size="sm" variant="primary" onPress={() => void save(tag.id)}>{t("保存")}</Button> : <Button size="sm" variant="secondary" onPress={() => { setEditingId(tag.id); setName(tag.name); setDeleteId(undefined); }}>{t("重命名")}</Button>}<Button size="sm" variant="dangerGhost" onPress={() => setDeleteId(tag.id)}>{t("删除")}</Button></div>
+        </div>) : <div className="settings-empty-row">{normalizedQuery ? t("没有匹配的标签。") : t("还没有标签。可在收藏项详情中添加。")}</div>}
       </SettingsCard>
     </section>
-  </div><ConfirmDialog isOpen={Boolean(deleteTag)} title="删除标签？" description={deleteTag ? `这将从收藏项中移除“${deleteTag.name}”，此操作无法撤销。` : ""} onClose={() => setDeleteId(undefined)} onConfirm={() => deleteTag ? deleteTagItem(deleteTag.id) : undefined} /></>;
+  </div><ConfirmDialog isOpen={Boolean(deleteTag)} title={t("删除标签？")} description={deleteTag ? tf("这将从收藏项中移除“{name}”，此操作无法撤销。", { name: deleteTag.name }) : ""} onClose={() => setDeleteId(undefined)} onConfirm={() => deleteTag ? deleteTagItem(deleteTag.id) : undefined} /></>;
 }
 
 function AiSettings() {
@@ -210,7 +224,7 @@ function AiSettings() {
     void Promise.all([
       sendExtensionMessage<AiSettingsView>({ type: "ai:config:get" } satisfies ExtensionRequest),
       sendExtensionMessage<AiTaskSummary>({ type: "ai:tasks:summary" } satisfies ExtensionRequest),
-    ]).then(([view, taskSummary]) => { setSettings(view); setHasApiKey(view.hasApiKey); setSummary(taskSummary); }).catch((reason) => setError(reason instanceof Error ? reason.message : "无法读取 AI 设置"));
+    ]).then(([view, taskSummary]) => { setSettings(view); setHasApiKey(view.hasApiKey); setSummary(taskSummary); }).catch((reason) => setError(reason instanceof Error ? t(reason.message) : t("无法读取 AI 设置")));
   }, []);
 
   const save = async () => {
@@ -219,30 +233,30 @@ function AiSettings() {
     try {
       if (settings.enabled) {
         const granted = await browser.permissions.request({ origins: [endpointPermissionPattern(settings.endpoint)] });
-        if (!granted) throw new Error("需要允许访问当前 Provider 域名，才能发送 AI 请求。");
-        if (!apiKey.trim() && !hasApiKey) throw new Error("请填写 API Key。");
+        if (!granted) throw new Error(t("需要允许访问当前 Provider 域名，才能发送 AI 请求。"));
+        if (!apiKey.trim() && !hasApiKey) throw new Error(t("请填写 API Key。"));
       }
       const view = await sendExtensionMessage<AiSettingsView>({ type: "ai:config:save", settings: { ...settings, apiKey: apiKey.trim() || undefined } } satisfies ExtensionRequest);
       setSettings(view); setHasApiKey(view.hasApiKey); setApiKey(""); setState("saved");
-      showToast("AI 设置已保存", { tone: "success" });
+      showToast(t("AI 设置已保存"), { tone: "success" });
       setSummary(await sendExtensionMessage<AiTaskSummary>({ type: "ai:tasks:summary" } satisfies ExtensionRequest));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "保存 AI 设置失败");
+      setError(reason instanceof Error ? t(reason.message) : t("保存 AI 设置失败"));
       setState("ready");
     }
   };
   const retryFailed = async () => {
     setError("");
-    try { setSummary(await sendExtensionMessage<AiTaskSummary>({ type: "ai:retry-failed" } satisfies ExtensionRequest)); } catch (reason) { setError(reason instanceof Error ? reason.message : "重试 AI 任务失败"); }
+    try { setSummary(await sendExtensionMessage<AiTaskSummary>({ type: "ai:retry-failed" } satisfies ExtensionRequest)); } catch (reason) { setError(reason instanceof Error ? t(reason.message) : t("重试 AI 任务失败")); }
   };
   const testConnection = async () => {
     setConnectionState("testing"); setConnectionMessage("");
     try {
       const granted = await browser.permissions.request({ origins: [endpointPermissionPattern(settings.endpoint)] });
-      if (!granted) throw new Error("需要允许访问当前 Provider 域名，才能测试连接。");
+      if (!granted) throw new Error(t("需要允许访问当前 Provider 域名，才能测试连接。"));
       await sendExtensionMessage({ type: "ai:config:test", settings: { ...settings, apiKey: apiKey.trim() || undefined } } satisfies ExtensionRequest);
-      setConnectionState("success"); setConnectionMessage("连接成功，API Key、Endpoint 和 Model 可用。");
-    } catch (reason) { setConnectionState("error"); setConnectionMessage(reason instanceof Error ? reason.message : "连接测试失败"); }
+      setConnectionState("success"); setConnectionMessage(t("连接成功，API Key、Endpoint 和 Model 可用。"));
+    } catch (reason) { setConnectionState("error"); setConnectionMessage(reason instanceof Error ? t(reason.message) : t("连接测试失败")); }
   };
   const setProvider = (provider: AiSettings["provider"]) => {
     if (provider !== settings.provider) { setHasApiKey(false); setApiKey(""); }
@@ -250,34 +264,34 @@ function AiSettings() {
     const preset = aiProviderPresets[provider];
     setSettings((current) => ({ ...current, provider, endpoint: preset.endpoint, model: preset.model }));
   };
-  const selectedStorageDescription = apiKeyStorageOptions.find((option) => option.value === settings.apiKeyStorage)?.description ?? "退出浏览器后需重新填写。";
+  const selectedStorageDescription = t(apiKeyStorageOptions.find((option) => option.value === settings.apiKeyStorage)?.description ?? "退出浏览器后需重新填写。");
 
   return <div className="settings-form">
-    <SettingsHeader title="AI 助手" description="可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。" action={<Button variant="primary" size="sm" isDisabled={state === "saving"} onPress={() => void save()}>{state === "saving" ? "保存中…" : "保存设置"}</Button>} />
+    <SettingsHeader title={t("AI 助手")} description={t("可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。")} action={<Button variant="primary" size="sm" isDisabled={state === "saving"} onPress={() => void save()}>{state === "saving" ? t("保存中…") : t("保存设置")}</Button>} />
     <section className="settings-form-section">
-      <SettingsSectionHeading title="自动整理" description="AI 只负责补全信息，关闭后不影响本地功能。" />
-      <SettingsCard><Switch className="settings-option-switch" label="启用 AI 自动整理" description="关闭后已保存的收藏项和本地功能保持不变。" isSelected={settings.enabled} onChange={(enabled) => setSettings((current) => ({ ...current, enabled }))} /></SettingsCard>
+      <SettingsSectionHeading title={t("自动整理")} description={t("AI 只负责补全信息，关闭后不影响本地功能。")} />
+      <SettingsCard><Switch className="settings-option-switch" label={t("启用 AI 自动整理")} description={t("关闭后已保存的收藏项和本地功能保持不变。")} isSelected={settings.enabled} onChange={(enabled) => setSettings((current) => ({ ...current, enabled }))} /></SettingsCard>
     </section>
     <section className="settings-form-section">
-      <SettingsSectionHeading title="模型与连接" description="选择服务并配置请求地址、模型和 API Key。" />
+      <SettingsSectionHeading title={t("模型与连接")} description={t("选择服务并配置请求地址、模型和 API Key。")} />
       <SettingsCard>
-        <SettingsRow title="Provider" description={settings.provider === "deepseek" ? "DeepSeek 官方 API，默认模型。" : "预设会同步填入 Endpoint 和默认模型。"} control={<SelectMenu<AiSettings["provider"]> label="Provider" value={settings.provider} options={aiProviderOptions} onChange={setProvider} className="ai-provider-select" />} />
+        <SettingsRow title="Provider" description={settings.provider === "deepseek" ? t("DeepSeek 官方 API，默认模型。") : t("预设会同步填入 Endpoint 和默认模型。")} control={<SelectMenu<AiSettings["provider"]> label="Provider" value={settings.provider} options={aiProviderOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={setProvider} className="ai-provider-select" />} />
         <SettingsRow title="Endpoint" control={<Field label="Endpoint" value={settings.endpoint} onChange={(endpoint) => setSettings((current) => ({ ...current, endpoint }))} placeholder="https://api.openai.com/v1" />} />
         <SettingsRow title="Model" control={<Field label="Model" value={settings.model} onChange={(model) => setSettings((current) => ({ ...current, model }))} placeholder="gpt-4.1-mini" />} />
-        <SettingsRow title="API Key" description={hasApiKey ? "已保存；留空保持不变。" : "填写你自己的 API Key。"} control={<Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? "已保存；留空保持不变" : "填写你自己的 API Key"} />} />
-        <SettingsRow title="测试连接" description="发送最小请求，不保存当前表单或 API Key。" control={<Button variant="secondary" size="sm" isDisabled={connectionState === "testing"} onPress={() => void testConnection()}><RiRefreshLine size={15} />{connectionState === "testing" ? "正在测试…" : "测试连接"}</Button>} >{connectionMessage ? <span className={connectionState === "success" ? "is-success" : "is-error"} role="status">{connectionMessage}</span> : null}</SettingsRow>
+        <SettingsRow title="API Key" description={hasApiKey ? t("已保存；留空保持不变。") : t("填写你自己的 API Key。")} control={<Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? t("已保存；留空保持不变") : t("填写你自己的 API Key")} />} />
+        <SettingsRow title={t("测试连接")} description={t("发送最小请求，不保存当前表单或 API Key。")} control={<Button variant="secondary" size="sm" isDisabled={connectionState === "testing"} onPress={() => void testConnection()}><RiRefreshLine size={15} />{connectionState === "testing" ? t("正在测试…") : t("测试连接")}</Button>} >{connectionMessage ? <span className={connectionState === "success" ? "is-success" : "is-error"} role="status">{connectionMessage}</span> : null}</SettingsRow>
       </SettingsCard>
     </section>
     <section className="settings-form-section">
-      <SettingsSectionHeading title="数据与任务" description="控制 Key 的保存位置，并查看自动整理进度。" />
+      <SettingsSectionHeading title={t("数据与任务")} description={t("控制 Key 的保存位置，并查看自动整理进度。")} />
       <SettingsCard>
-        <SettingsRow title="Key 保存方式" description={selectedStorageDescription} control={<SelectMenu<ApiKeyStorage> label="Key 保存方式" value={settings.apiKeyStorage} options={apiKeyStorageOptions} onChange={(apiKeyStorage) => setSettings((current) => ({ ...current, apiKeyStorage }))} className="settings-select-menu" />} />
-        <SettingsRow title="发送范围" description="只发送链接、标题、描述、正文与标签；Key 不会进入本地数据库或备份。" />
-        <SettingsRow title="处理任务" description={`等待 ${summary.pending} · 失败 ${summary.failed} · 完成 ${summary.complete}`} control={<Button variant="secondary" size="sm" isDisabled={!summary.failed} onPress={() => void retryFailed()}><RiRefreshLine size={15} />重试失败任务</Button>} />
+        <SettingsRow title={t("Key 保存方式")} description={selectedStorageDescription} control={<SelectMenu<ApiKeyStorage> label={t("Key 保存方式")} value={settings.apiKeyStorage} options={apiKeyStorageOptions.map((option) => ({ ...option, label: t(option.label), description: t(option.description) }))} onChange={(apiKeyStorage) => setSettings((current) => ({ ...current, apiKeyStorage }))} className="settings-select-menu" />} />
+        <SettingsRow title={t("发送范围")} description={t("只发送链接、标题、描述、正文与标签；Key 不会进入本地数据库或备份。")} />
+        <SettingsRow title={t("处理任务")} description={tf("等待 {pending} · 失败 {failed} · 完成 {complete}", { pending: summary.pending, failed: summary.failed, complete: summary.complete })} control={<Button variant="secondary" size="sm" isDisabled={!summary.failed} onPress={() => void retryFailed()}><RiRefreshLine size={15} />{t("重试失败任务")}</Button>} />
       </SettingsCard>
     </section>
     {error ? <p className="form-error" role="alert">{error}</p> : null}
-    {state === "saved" ? <p className="form-success" role="status">设置已保存，可处理的任务已开始运行。</p> : null}
+    {state === "saved" ? <p className="form-success" role="status">{t("设置已保存，可处理的任务已开始运行。")}</p> : null}
   </div>;
 }
 
@@ -292,43 +306,42 @@ function BackupSettings() {
     try {
       const backup = await createBackup();
       const file = new Blob([JSON.stringify(backup)], { type: "application/json" });
-      if (file.size > MAX_BACKUP_BYTES) throw new Error("备份超过 100 MB，当前版本无法安全处理；未下载不可恢复的文件。");
+      if (file.size > MAX_BACKUP_BYTES) throw new Error(t("备份超过 100 MB，当前版本无法安全处理；未下载不可恢复的文件。"));
       const url = URL.createObjectURL(file); const link = document.createElement("a"); link.href = url; link.download = `wanderland-backup-${new Date().toISOString().slice(0, 10)}.json`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      setResult(`已准备下载：${backup.savedItems.length} 个收藏项，含标签、快照、封面和快捷视图。`);
-      showToast("备份文件已准备下载", { tone: "success" });
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "导出失败，未生成备份文件。请检查浏览器存储空间后重试。"); } finally { setBusy(false); }
+      setResult(tf("已准备下载：{count} 个收藏项，含标签、快照、封面和快捷视图。", { count: backup.savedItems.length }));
+      showToast(t("备份文件已准备下载"), { tone: "success" });
+    } catch (cause) { setError(cause instanceof Error ? t(cause.message) : t("导出失败，未生成备份文件。请检查浏览器存储空间后重试。")); } finally { setBusy(false); }
   };
   const chooseFile = async (file?: File) => {
     setSelected(undefined); setError(""); setResult(""); if (!file) return;
-    if (file.size > MAX_BACKUP_BYTES) { setError("备份文件超过 100 MB，未读取。请先检查文件来源。"); return; }
+    if (file.size > MAX_BACKUP_BYTES) { setError(t("备份文件超过 100 MB，未读取。请先检查文件来源。")); return; }
     setBusy(true);
-    try { setSelected({ name: file.name, backup: parseBackup(JSON.parse(await file.text()) as unknown) }); } catch (cause) { setError(cause instanceof Error ? cause.message : "无法读取备份文件。"); } finally { setBusy(false); }
+    try { setSelected({ name: file.name, backup: parseBackup(JSON.parse(await file.text()) as unknown) }); } catch (cause) { setError(cause instanceof Error ? t(cause.message) : t("无法读取备份文件。")); } finally { setBusy(false); }
   };
   const restore = async () => {
     if (!selected) return;
     setBusy(true); setError(""); setResult("");
-    try { const outcome = await restoreBackup(selected.backup); setResult(`恢复完成：新增 ${outcome.added} 个收藏项，跳过 ${outcome.skipped} 个已有项，新增 ${outcome.views} 个快捷视图。`); setSelected(undefined); showToast(`恢复完成：新增 ${outcome.added} 个收藏项`, { tone: "success" }); } catch (cause) { setError(cause instanceof Error ? cause.message : "恢复失败；数据库事务已回滚，原有数据未删除。"); } finally { setBusy(false); }
+    try { const outcome = await restoreBackup(selected.backup); setResult(tf("恢复完成：新增 {added} 个收藏项，跳过 {skipped} 个已有项，新增 {views} 个快捷视图。", outcome)); setSelected(undefined); showToast(tf("恢复完成：新增 {count} 个收藏项", { count: outcome.added }), { tone: "success" }); } catch (cause) { setError(cause instanceof Error ? t(cause.message) : t("恢复失败；数据库事务已回滚，原有数据未删除。")); } finally { setBusy(false); }
   };
   return <div className="settings-form">
-    <SettingsHeader title="备份与恢复" description="将本地收藏库保存为文件，或从先前的备份补回内容。" />
+    <SettingsHeader title={t("备份与恢复")} description={t("将本地收藏库保存为文件，或从先前的备份补回内容。")} />
     <section className="settings-form-section">
-      <SettingsSectionHeading title="本地收藏库" description="导出完整备份，或从已有文件合并恢复。" />
+      <SettingsSectionHeading title={t("本地收藏库")} description={t("导出完整备份，或从已有文件合并恢复。")} />
       <SettingsCard>
-        <SettingsRow title="导出完整收藏库" description="包含收藏项、归档项、标签、正文快照、封面图片、快捷视图和待处理任务。" control={<Button variant="secondary" isDisabled={busy} onPress={() => void exportFile()}>下载备份文件</Button>} />
-        <SettingsRow title="从备份恢复" description="只补入缺少的收藏项，不覆盖或删除当前内容；相同类型和网址的项目会跳过。" control={<label className="button button-secondary button-md backup-file-label">选择 JSON 备份<input type="file" accept=".json,application/json" disabled={busy} onChange={(event) => { void chooseFile(event.target.files?.[0]); event.target.value = ""; }} /></label>}>
-          {selected ? <div className="settings-backup-preview"><strong>{selected.name}</strong><span>{selected.backup.savedItems.length} 个收藏项 · {selected.backup.snapshots.length} 份快照 · {selected.backup.tags.length} 个标签</span><Button variant="primary" isDisabled={busy} onPress={() => void restore()}>确认合并恢复</Button></div> : null}
+        <SettingsRow title={t("导出完整收藏库")} description={t("包含收藏项、归档项、标签、正文快照、封面图片、快捷视图和待处理任务。")} control={<Button variant="secondary" isDisabled={busy} onPress={() => void exportFile()}>{t("下载备份文件")}</Button>} />
+        <SettingsRow title={t("从备份恢复")} description={t("只补入缺少的收藏项，不覆盖或删除当前内容；相同类型和网址的项目会跳过。")} control={<label className="button button-secondary button-md backup-file-label">{t("选择 JSON 备份")}<input type="file" accept=".json,application/json" disabled={busy} onChange={(event) => { void chooseFile(event.target.files?.[0]); event.target.value = ""; }} /></label>}>
+          {selected ? <div className="settings-backup-preview"><strong>{selected.name}</strong><span>{selected.backup.savedItems.length}{t(" 个收藏项 · ")}{selected.backup.snapshots.length}{t(" 份快照 · ")}{selected.backup.tags.length}{t(" 个标签")}</span><Button variant="primary" isDisabled={busy} onPress={() => void restore()}>{t("确认合并恢复")}</Button></div> : null}
         </SettingsRow>
       </SettingsCard>
       {error ? <p className="form-error" role="alert">{error}</p> : null}{result ? <p className="form-success" role="status">{result}</p> : null}
     </section>
     <section className="settings-form-section">
-      <SettingsSectionHeading title="隐私与迁移" description="备份文件由你自行保管。" />
-      <SettingsCard><SettingsRow title="备份内容" description="备份文件保存在你选择的位置，包含私人收藏与网页正文；不包含 AI API Key。AI Provider 设置保持当前浏览器原样，迁移到新浏览器时需重新配置。" control={<RiShieldCheckLine size={20} aria-hidden="true" />} /></SettingsCard>
+      <SettingsSectionHeading title={t("隐私与迁移")} description={t("备份文件由你自行保管。")} />
+      <SettingsCard><SettingsRow title={t("备份内容")} description={t("备份文件保存在你选择的位置，包含私人收藏与网页正文；不包含 AI API Key。AI Provider 设置保持当前浏览器原样，迁移到新浏览器时需重新配置。")} control={<RiShieldCheckLine size={20} aria-hidden="true" />} /></SettingsCard>
     </section>
   </div>;
 }
 
-function formatArchivedAt(timestamp: number) { return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(timestamp); }
 
 function ArchiveSettings() {
   const { showToast, showUndoToast } = useToast();
@@ -336,14 +349,14 @@ function ArchiveSettings() {
   const restoreItem = async (id: string) => {
     const item = items.find((candidate) => candidate.id === id);
     await inspirationRepository.setArchived(id, false);
-    showUndoToast("已取消归档", {
+    showUndoToast(t("已取消归档"), {
       subject: item?.title,
       onUndo: async () => {
         try {
           await inspirationRepository.setArchived(id, true);
-          showToast("已恢复归档", { tone: "success" });
+          showToast(t("已恢复归档"), { tone: "success" });
         } catch {
-          showToast("撤回取消归档失败，请稍后重试", { tone: "danger" });
+          showToast(t("撤回取消归档失败，请稍后重试"), { tone: "danger" });
         }
       },
     });
@@ -351,66 +364,97 @@ function ArchiveSettings() {
   const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
     try {
       const restored = await inspirationRepository.restoreSavedItem(deleted);
-      showToast(restored ? "已撤回删除" : "撤回失败：收藏项已存在", { tone: restored ? "success" : "danger" });
+      showToast(restored ? t("已撤回删除") : t("撤回失败：收藏项已存在"), { tone: restored ? "success" : "danger" });
     } catch {
-      showToast("撤回失败，请稍后重试", { tone: "danger" });
+      showToast(t("撤回失败，请稍后重试"), { tone: "danger" });
     }
   };
   const deleteArchivedItem = async (id: string) => {
     const deleted = await inspirationRepository.deleteSavedItem(id);
     if (!deleted) return;
-    showUndoToast("已删除收藏项", { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
+    showUndoToast(t("已删除收藏项"), { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
   };
-  return <div className="settings-form"><SettingsHeader title="归档" description="归档项不会出现在收藏库中，可随时恢复或永久删除。" /><section className="settings-form-section"><SettingsSectionHeading title="已归档内容" description="恢复后会回到原来的收藏库范围。" /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatArchivedAt(item.archivedAt!)}</span></div><div className="settings-list-actions"><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>删除</Button><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>取消归档</Button></div></article>) : <div className="settings-empty-row">还没有归档内容。</div>}</SettingsCard></section></div>;
+  return <div className="settings-form"><SettingsHeader title={t("归档")} description={t("归档项不会出现在收藏库中，可随时恢复或永久删除。")} /><section className="settings-form-section"><SettingsSectionHeading title={t("已归档内容")} description={t("恢复后会回到原来的收藏库范围。")} /><SettingsCard className="archive-settings-list">{items.length ? items.map((item) => <article className="settings-list-row" key={item.id}><div><strong>{item.title}</strong><span>{formatUiDate(item.archivedAt!, true)}</span></div><div className="settings-list-actions"><Button size="sm" variant="dangerGhost" onPress={() => void deleteArchivedItem(item.id)}>{t("删除")}</Button><Button size="sm" variant="secondary" onPress={() => void restoreItem(item.id)}>{t("取消归档")}</Button></div></article>) : <div className="settings-empty-row">{t("还没有归档内容。")}</div>}</SettingsCard></section></div>;
 }
 
 const themeOptions: ReadonlyArray<{ value: ThemePreference; label: string }> = [
+  { value: "system", label: "跟随系统" },
   { value: "dark", label: "深色" },
   { value: "light", label: "浅色" },
-  { value: "system", label: "系统" },
 ];
+const languageOptions: ReadonlyArray<{ value: LanguagePreference; label: string }> = [
+  { value: "system", label: "跟随系统" },
+  { value: "zh-CN", label: "中文" },
+  { value: "en-US", label: "English" },
+];
+
+function ThemePreviewScene({ tone, half }: { tone: "dark" | "light"; half?: "left" | "right" }) {
+  return <span className={`theme-preview-scene theme-preview--${tone}${half ? ` theme-preview-scene--${half}` : ""}`}>
+    <span className="theme-preview-sidebar">
+      <span className="theme-preview-lights"><i /><i /><i /></span>
+      <span className="theme-preview-sidebar-lines"><i /><i /><i /></span>
+      <span className="theme-preview-sidebar-bottom" />
+    </span>
+    <span className="theme-preview-main">
+      <span className="theme-preview-heading" />
+      <span className="theme-preview-subtitle" />
+      <span className="theme-preview-tiles"><i /><i /><i /></span>
+      <span className="theme-preview-footer" />
+    </span>
+  </span>;
+}
 
 function AppearanceSettings() {
   const theme = useSyncExternalStore(subscribeThemePreference, getThemePreferenceSnapshot);
+  const language = useLanguagePreference();
   return <div className="settings-form">
-    <SettingsHeader title="外观" description="选择适合当前环境的工作台外观。" />
+    <SettingsHeader title={t("外观")} description={t("选择适合当前环境的工作台外观。")} />
     <section className="settings-form-section">
-      <SettingsSectionHeading title="主题" description="选择“系统”时，Webloom 会随设备外观自动切换。" />
-      <RadioGroup label="主题" className="appearance-theme-options" orientation="horizontal" value={theme} options={themeOptions} onChange={(next) => void setThemePreference(next)} renderOption={(option) => <>
+      <SettingsSectionHeading title={t("主题")} description={t("选择“跟随系统”时，Webloom 会随设备外观自动切换。")} />
+      <RadioGroup label={t("主题")} className="appearance-theme-options" orientation="horizontal" value={theme} options={themeOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={(next) => void setThemePreference(next)} renderOption={(option) => <>
         <span className={`theme-preview theme-preview--${option.value}`} aria-hidden="true">
-          <span className="theme-preview-sidebar">
-            <span className="theme-preview-lights"><i /><i /><i /></span>
-            <span className="theme-preview-sidebar-lines"><i /><i /><i /></span>
-            <span className="theme-preview-sidebar-bottom" />
-          </span>
-          <span className="theme-preview-main">
-            <span className="theme-preview-heading" />
-            <span className="theme-preview-subtitle" />
-            <span className="theme-preview-tiles"><i /><i /><i /></span>
-            <span className="theme-preview-footer" />
-          </span>
+          {option.value === "system" ? <><ThemePreviewScene tone="dark" half="left" /><ThemePreviewScene tone="light" half="right" /></> : <ThemePreviewScene tone={option.value} />}
         </span>
         <strong>{option.label}</strong>
       </>} />
     </section>
+    <section className="settings-form-section">
+      <SettingsSectionHeading title={t("界面语言")} description={t("切换界面显示语言")} />
+      <RadioGroup label={t("界面语言")} className="appearance-language-options" orientation="horizontal" value={language} options={languageOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={(next) => void setLanguagePreference(next)} renderOption={(option) => <strong>{option.label}</strong>} />
+    </section>
   </div>;
 }
 
-function PlaceholderSettings({ section }: { section: "digest" | "about" }) {
-  const data = {
-    digest: { title: "内容简报", description: "把收藏库整理成可回顾的内容简报。", body: "内容简报将在后续版本开放。" },
-    about: { title: "关于WEBLOOM", description: "了解当前版本与本地优先的数据边界。", body: "WEBLOOM v0.6.9 · 数据只保存在当前浏览器。" },
-  }[section];
-  return <div className="settings-form"><SettingsHeader title={data.title} description={data.description} /><section className="settings-form-section"><SettingsSectionHeading title={data.title} description={data.description} /><SettingsCard><SettingsRow title={data.title} description={data.body} control={<RiInformationLine size={20} aria-hidden="true" />} /></SettingsCard></section></div>;
+function AboutSettings() {
+  const version = typeof browser !== "undefined" && browser.runtime?.getManifest
+    ? browser.runtime.getManifest().version
+    : packageVersion;
+
+  return <div className="settings-form about-settings">
+    <SettingsHeader title={t("关于")} />
+    <div className="about-product">
+      <img src="/assets/logo.svg" alt="" aria-hidden="true" />
+      <h2>WEBLOOM</h2>
+      <p>{t("在浏览器内收藏、整理并重新发现网站、文章与关注源。")}</p>
+    </div>
+    <SettingsCard className="about-details">
+      <SettingsRow title={t("开发者")} control="Webloom" />
+      <SettingsRow title={t("应用版本")} description={t("数据只保存在当前浏览器。")} control={`WEBLOOM v${version}`} />
+    </SettingsCard>
+  </div>;
+}
+
+function PlaceholderSettings() {
+  return <div className="settings-form"><SettingsHeader title={t("内容简报")} description={t("把收藏库整理成可回顾的内容简报。")} /><section className="settings-form-section"><SettingsSectionHeading title={t("内容简报")} description={t("把收藏库整理成可回顾的内容简报。")} /><SettingsCard><SettingsRow title={t("内容简报")} description={t("内容简报将在后续版本开放。")} /></SettingsCard></section></div>;
 }
 
 export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void }) {
-  const [section, setSection] = useState<SettingsSection>("bookmarks");
+  const [section, setSection] = useState<SettingsSection>("appearance");
   const contentRef = useRef<HTMLDivElement>(null);
   const riseAnimations = useRef<Animation[]>([]);
   const items = useLiveQuery(() => inspirationRepository.listLibraryItems(), []) ?? [];
   const views = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []) ?? [];
-  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : section === "appearance" ? <AppearanceSettings /> : <PlaceholderSettings section={section} />;
+  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : section === "appearance" ? <AppearanceSettings /> : section === "about" ? <AboutSettings /> : <PlaceholderSettings />;
 
   useLayoutEffect(() => {
     riseAnimations.current.forEach((animation) => animation.cancel());

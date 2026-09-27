@@ -27,6 +27,7 @@ import { DetailDialog } from "./DetailDialog";
 import { ImportDialog } from "./ImportDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
 import { LibrarySkeleton } from "./LibrarySkeleton";
+import { t, tf } from "@/src/i18n/ui";
 
 type LayoutMode = InspirationLayout;
 type SortOrder = "newest" | "oldest";
@@ -134,7 +135,7 @@ export function LibraryPage() {
     return [...filtered].sort((a, b) => sortOrder === "newest" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt);
   }, [activeScope, currentView, items, searchMatches, selectedTags, sortOrder]);
 
-  const viewTitle = currentView?.name ?? (activeScope === "all" ? "全部内容" : activeScope === "favorites" ? "星标" : activeScope === "unprocessed" ? "未处理" : kindLabels[activeScope]);
+  const viewTitle = currentView ? currentView.isSystem ? t(currentView.name) : currentView.name : (activeScope === "all" ? t("全部内容") : activeScope === "favorites" ? t("星标") : activeScope === "unprocessed" ? t("未处理") : t(kindLabels[activeScope]));
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
   const selectedSiteItemCount = selectedItem ? items.filter((item) => item.siteHost === selectedItem.siteHost).length : 0;
   const resetBrowseControls = () => { setSelectedTags([]); setSortOrder("newest"); };
@@ -148,41 +149,41 @@ export function LibraryPage() {
   };
   const renameSavedView = async (id: string, name: string) => {
     await inspirationRepository.renameSavedView(id, name);
-    showToast("快捷视图已保存", { tone: "success" });
+    showToast(t("快捷视图已保存"), { tone: "success" });
   };
   const deleteSavedView = async (id: string) => {
     await inspirationRepository.deleteSavedView(id);
     setActiveSavedView((current) => current === id ? null : current);
-    showToast("快捷视图已删除", { tone: "success" });
+    showToast(t("快捷视图已删除"), { tone: "success" });
   };
   const moveSavedView = (sourceId: string, targetId: string) => {
     void inspirationRepository.moveSavedView(sourceId, targetId);
   };
   const createSavedView = async () => {
-    const view = await inspirationRepository.createSavedView({ name: "新快捷视图", scope: activeScope, tags: selectedTags });
+    const view = await inspirationRepository.createSavedView({ name: t("新快捷视图"), scope: activeScope, tags: selectedTags });
     setActiveSavedView(view.id);
-    showToast("快捷视图已保存", { tone: "success" });
+    showToast(t("快捷视图已保存"), { tone: "success" });
   };
   const toggleFavorite = (id: string) => { void inspirationRepository.toggleFavorite(id); };
   const copyLink = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-      showToast("链接已复制", { tone: "success" });
+      showToast(t("链接已复制"), { tone: "success" });
     } catch {
-      showToast("复制链接失败", { tone: "danger" });
+      showToast(t("复制链接失败"), { tone: "danger" });
     }
   };
   const archiveItem = async (id: string, archived: boolean) => {
     const item = items.find((candidate) => candidate.id === id);
     await inspirationRepository.setArchived(id, archived);
-    showUndoToast(archived ? "已归档收藏项" : "已取消归档", {
+    showUndoToast(archived ? t("已归档收藏项") : t("已取消归档"), {
       subject: item?.title,
       onUndo: async () => {
         try {
           await inspirationRepository.setArchived(id, !archived);
-          showToast(archived ? "已撤回归档" : "已恢复归档", { tone: "success" });
+          showToast(archived ? t("已撤回归档") : t("已恢复归档"), { tone: "success" });
         } catch {
-          showToast("撤回归档失败，请稍后重试", { tone: "danger" });
+          showToast(t("撤回归档失败，请稍后重试"), { tone: "danger" });
         }
       },
     });
@@ -190,22 +191,22 @@ export function LibraryPage() {
   const restoreDeletedItem = async (deleted: DeletedSavedItem) => {
     try {
       const restored = await inspirationRepository.restoreSavedItem(deleted);
-      showToast(restored ? "已撤回删除" : "撤回失败：收藏项已存在", { tone: restored ? "success" : "danger" });
+      showToast(restored ? t("已撤回删除") : t("撤回失败：收藏项已存在"), { tone: restored ? "success" : "danger" });
     } catch {
-      showToast("撤回失败，请稍后重试", { tone: "danger" });
+      showToast(t("撤回失败，请稍后重试"), { tone: "danger" });
     }
   };
   const deleteItem = async (id: string) => {
     const deleted = await inspirationRepository.deleteSavedItem(id);
     if (!deleted) return;
-    showUndoToast("已删除收藏项", { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
+    showUndoToast(t("已删除收藏项"), { subject: deleted.item.title, onUndo: () => restoreDeletedItem(deleted) });
   };
   const undoAddedItems = async (ids: string[]) => {
     try {
       await inspirationRepository.deleteSavedItems(ids);
-      showToast(ids.length === 1 ? "已撤回添加" : "已撤回批量添加", { tone: "success" });
+      showToast(ids.length === 1 ? t("已撤回添加") : t("已撤回批量添加"), { tone: "success" });
     } catch {
-      showToast("撤回添加失败，请稍后重试", { tone: "danger" });
+      showToast(t("撤回添加失败，请稍后重试"), { tone: "danger" });
     }
   };
   const updateItem = async (input: UpdateSavedItemInput) => {
@@ -213,10 +214,10 @@ export function LibraryPage() {
     const kindChanged = await inspirationRepository.updateSavedItem(selectedItem.id, input);
     if (kindChanged) {
       void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
-      showToast("内容类型已更改，AI 整理已重新排队", { tone: "info" });
+      showToast(t("内容类型已更改，AI 整理已重新排队"), { tone: "info" });
       return;
     }
-    showToast("修改已保存", { tone: "success" });
+    showToast(t("修改已保存"), { tone: "success" });
   };
 
   function navigateDetail(direction: -1 | 1) {
@@ -265,7 +266,7 @@ export function LibraryPage() {
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     changeScope(kind);
     const addedItem = await inspirationRepository.getSavedItem(result.item.id);
-    showUndoToast("已添加收藏项", { subject: addedItem?.title ?? result.item.title, onUndo: () => undoAddedItems([result.item.id]) });
+    showUndoToast(t("已添加收藏项"), { subject: addedItem?.title ?? result.item.title, onUndo: () => undoAddedItems([result.item.id]) });
     return true;
   }
 
@@ -297,7 +298,7 @@ export function LibraryPage() {
     void browser.runtime.sendMessage({ type: "ai:process" } satisfies ExtensionRequest);
     if (result.added > 0) {
       changeScope(kind);
-      showUndoToast(`已添加 ${result.added} 个收藏项`, { onUndo: () => undoAddedItems(result.addedItems.map((item) => item.id)) });
+      showUndoToast(tf("已添加 {count} 个收藏项", { count: result.added }), { onUndo: () => undoAddedItems(result.addedItems.map((item) => item.id)) });
     }
     return result;
   }
@@ -316,45 +317,45 @@ export function LibraryPage() {
     requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   };
   const contextActions: ContextMenuAction[] = contextItem ? [
-    { id: "visit", label: "访问网页", icon: <RiExternalLinkLine size={16} />, onAction: () => window.open(contextItem.url, "_blank", "noopener,noreferrer") },
-    { id: "copy", label: "复制链接", icon: <RiFileCopyLine size={16} />, onAction: () => copyLink(contextItem.url) },
-    { id: "favorite", label: contextItem.isFavorite ? "取消星标" : "星标", icon: contextItem.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />, separatorBefore: true, onAction: () => toggleFavorite(contextItem.id) },
-    { id: "tags", label: "标签", icon: <RiPriceTag3Line size={16} />, onAction: () => openDetail(contextItem.id, { editing: true, editFocus: "tags" }) },
-    { id: "edit", label: "编辑信息", icon: <RiEditLine size={16} />, onAction: () => openDetail(contextItem.id, { editing: true }) },
-    { id: "snapshot", label: "查看快照", icon: <RiTextSnippet size={16} />, separatorBefore: true, onAction: () => openDetail(contextItem.id, { mode: "snapshot" }) },
-    { id: "ai", label: "AI 整理", icon: <RiSparkling2Line size={16} />, onAction: async () => { await browser.runtime.sendMessage({ type: "ai:retry", itemId: contextItem.id } satisfies ExtensionRequest); } },
-    { id: "archive", label: contextItem.archivedAt ? "取消归档" : "归档", icon: <RiArchiveLine size={16} />, separatorBefore: true, onAction: () => archiveItem(contextItem.id, !contextItem.archivedAt) },
-    { id: "delete", label: "删除", icon: <RiDeleteBinLine size={16} />, danger: true, onAction: () => deleteItem(contextItem.id) },
+    { id: "visit", label: t("访问网页"), icon: <RiExternalLinkLine size={16} />, onAction: () => window.open(contextItem.url, "_blank", "noopener,noreferrer") },
+    { id: "copy", label: t("复制链接"), icon: <RiFileCopyLine size={16} />, onAction: () => copyLink(contextItem.url) },
+    { id: "favorite", label: contextItem.isFavorite ? t("取消星标") : t("星标"), icon: contextItem.isFavorite ? <RiBookmarkFill size={16} /> : <RiBookmarkLine size={16} />, separatorBefore: true, onAction: () => toggleFavorite(contextItem.id) },
+    { id: "tags", label: t("标签"), icon: <RiPriceTag3Line size={16} />, onAction: () => openDetail(contextItem.id, { editing: true, editFocus: "tags" }) },
+    { id: "edit", label: t("编辑信息"), icon: <RiEditLine size={16} />, onAction: () => openDetail(contextItem.id, { editing: true }) },
+    { id: "snapshot", label: t("查看快照"), icon: <RiTextSnippet size={16} />, separatorBefore: true, onAction: () => openDetail(contextItem.id, { mode: "snapshot" }) },
+    { id: "ai", label: t("AI 整理"), icon: <RiSparkling2Line size={16} />, onAction: async () => { await browser.runtime.sendMessage({ type: "ai:retry", itemId: contextItem.id } satisfies ExtensionRequest); } },
+    { id: "archive", label: contextItem.archivedAt ? t("取消归档") : t("归档"), icon: <RiArchiveLine size={16} />, separatorBefore: true, onAction: () => archiveItem(contextItem.id, !contextItem.archivedAt) },
+    { id: "delete", label: t("删除"), icon: <RiDeleteBinLine size={16} />, danger: true, onAction: () => deleteItem(contextItem.id) },
   ] : [];
 
   return (
     <AppShell items={items} activeScope={activeScope} activeSavedView={activeSavedView} savedViews={views} onScopeChange={changeScope} onSavedViewChange={changeSavedView} onSavedViewRename={renameSavedView} onSavedViewDelete={deleteSavedView} onSavedViewMove={moveSavedView} onOpenSettings={() => { window.location.hash = "#settings"; }}>
       <div className="library-page">
         <header className="library-intro">
-          <AnimatedSearchField className="library-search" value={query} onChange={setQuery} inputRef={searchRef} placeholder="搜索设计、创意或关键词……" aria-label="搜索收藏项" />
+          <AnimatedSearchField className="library-search" value={query} onChange={setQuery} inputRef={searchRef} placeholder={t("搜索设计、创意或关键词…")} aria-label={t("搜索收藏项")} />
         </header>
 
         <div className="collection-toolbar">
           <div className="toolbar-main-row">
             <div className="toolbar-left">
               <div className="view-heading"><strong>{viewTitle}</strong><span>{visibleItems.length}</span></div>
-              <div className="facet-filter-bar" aria-label="内容筛选">
-                <FacetFilter label="标签" icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={allTags.map((tag) => ({ id: tag.name, label: tag.name, count: tag.count }))} selectedValues={selectedTags} onChange={(values) => { setSelectedTags(values); setActiveSavedView(null); }} searchable searchPlaceholder="搜索标签" />
+              <div className="facet-filter-bar" aria-label={t("内容筛选")}>
+                <FacetFilter label={t("标签")} icon={<RiPriceTag3Line size={15} aria-hidden="true" />} options={allTags.map((tag) => ({ id: tag.name, label: tag.name, count: tag.count }))} selectedValues={selectedTags} onChange={(values) => { setSelectedTags(values); setActiveSavedView(null); }} searchable searchPlaceholder={t("搜索标签")} />
               </div>
             </div>
             <div className="toolbar-right">
-              <SelectMenu label="排序方式" value={sortOrder} options={sortOptions} onChange={setSortOrder} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} className="sort-control" />
-              <SegmentedControl label="排列样式" value={layoutMode} options={layoutOptions} onChange={setLayoutMode} className="layout-switch" />
+              <SelectMenu label={t("排序方式")} value={sortOrder} options={sortOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={setSortOrder} icon={<RiArrowUpDownLine size={15} aria-hidden="true" />} className="sort-control" />
+              <SegmentedControl label={t("排列样式")} value={layoutMode} options={layoutOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={setLayoutMode} className="layout-switch" />
             </div>
           </div>
-          {selectedTags.length ? <SelectedTagBar tags={selectedTags} onRemove={removeTag} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm" onPress={createSavedView}>保存为快捷视图</Button><Button variant="ghost" size="sm" onPress={clearConditions}>清除全部</Button></div>} /> : null}
+          {selectedTags.length ? <SelectedTagBar tags={selectedTags} onRemove={removeTag} actions={<div className="filter-result-actions"><Button variant="secondary" size="sm" onPress={createSavedView}>{t("保存为快捷视图")}</Button><Button variant="ghost" size="sm" onPress={clearConditions}>{t("清除全部")}</Button></div>} /> : null}
         </div>
 
         <div className={cn("library-results", "t-skel", liveItems !== undefined && "is-revealed")} aria-busy={liveItems === undefined} aria-live={liveItems === undefined ? "polite" : undefined}>
-          {liveItems === undefined ? <span className="sr-only">正在打开本地收藏库</span> : null}
+          {liveItems === undefined ? <span className="sr-only">{t("正在打开本地收藏库")}</span> : null}
           <div className="t-skel-skeleton is-pulsing"><LibrarySkeleton /></div>
           <div className="t-skel-content">
-            {liveItems !== undefined ? visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>建立你的第一个收藏项</h2><p>添加网站、文章或关注源，刷新页面后它仍会留在这里。</p><Button variant="primary" onPress={() => setImportKind("website")}>添加网站</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>没有匹配的内容</h2><p>调整筛选条件，或换一个搜索关键词后再试。</p><Button variant="secondary" onPress={clearConditions}>清除筛选</Button></div> : null}
+            {liveItems !== undefined ? visibleItems.length ? layoutMode === "list" ? <div className="inspiration-list">{visibleItems.map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : <div className={cn("inspiration-grid", layoutMode === "compact" && "is-compact")}>{visibleItems.map((item) => <InspirationCard key={item.id} item={item} layout={layoutMode} masonry onOpen={() => openDetail(item.id)} onContextMenu={(event) => openItemContextMenu(event, item.id)} onTagClick={(tag) => { setSelectedTags((current) => current.includes(tag) ? current : [...current, tag]); setActiveSavedView(null); }} onToggleFavorite={() => toggleFavorite(item.id)} />)}</div> : items.length === 0 ? <div className="empty-state"><div className="empty-mark"><RiPriceTag3Line size={22} /></div><h2>{t("建立你的第一个收藏项")}</h2><p>{t("添加网站、文章或关注源，刷新页面后它仍会留在这里。")}</p><Button variant="primary" onPress={() => setImportKind("website")}>{t("添加网站")}</Button></div> : <div className="empty-state"><div className="empty-mark"><RiSearchLine size={22} /></div><h2>{t("没有匹配的内容")}</h2><p>{t("调整筛选条件，或换一个搜索关键词后再试。")}</p><Button variant="secondary" onPress={clearConditions}>{t("清除筛选")}</Button></div> : null}
           </div>
         </div>
       </div>
@@ -365,7 +366,7 @@ export function LibraryPage() {
       <BackupDialog isOpen={backupOpen} onClose={() => setBackupOpen(false)} />
       <TagManagerDialog isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
       <DataImportDialog isOpen={bookmarkImportOpen} onClose={() => setBookmarkImportOpen(false)} onImport={(urls, enrichMetadata) => importItems("website", urls, enrichMetadata)} />
-      {contextMenu && contextItem ? <ContextMenu label={`${contextItem.title} 操作菜单`} position={contextMenu} actions={contextActions} onClose={closeItemContextMenu} /> : null}
+      {contextMenu && contextItem ? <ContextMenu label={tf("{title} 操作菜单", { title: contextItem.title })} position={contextMenu} actions={contextActions} onClose={closeItemContextMenu} /> : null}
       <DetailDialog item={selectedItem} initialMode={detailIntent.mode} initialEditing={detailIntent.editing} initialEditFocus={detailIntent.editFocus} onClose={closeDetail} onNavigate={navigateDetail} onUpdate={updateItem} onDelete={async () => { if (!selectedItem) return; await deleteItem(selectedItem.id); closeDetail(); }} siteItemCount={selectedSiteItemCount} onShowSite={() => { if (!selectedItem) return; setQuery(selectedItem.siteHost); setActiveScope("all"); setSelectedTags([]); closeDetail(); }} />
     </AppShell>
   );

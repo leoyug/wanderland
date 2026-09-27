@@ -9,19 +9,18 @@ let rerunRequested = false;
 async function runQueue() {
   const credentials = await getAiCredentials();
   if (!credentials) return;
-  const outputLanguage = await getAppLanguage();
-  const provider = new OpenAiCompatibleProvider({
-    endpoint: credentials.settings.endpoint,
-    model: credentials.settings.model,
-    apiKey: credentials.apiKey,
-    outputLanguage,
-    extraBody: credentials.settings.provider === "deepseek" ? { thinking: { type: "disabled" } } : undefined,
-  });
   const tasks = await inspirationRepository.listRunnableAiTasks();
   for (const task of tasks) {
     if (!(await inspirationRepository.isAiTaskReady(task.itemId))) continue;
     if (!(await inspirationRepository.markAiStarted(task.id))) continue;
     try {
+      const provider = new OpenAiCompatibleProvider({
+        endpoint: credentials.settings.endpoint,
+        model: credentials.settings.model,
+        apiKey: credentials.apiKey,
+        outputLanguage: await getAppLanguage(),
+        extraBody: credentials.settings.provider === "deepseek" ? { thinking: { type: "disabled" } } : undefined,
+      });
       const input = await inspirationRepository.getAiAnalysisInput(task.itemId);
       if (!input) continue;
       const analysis = await provider.analyze(input);

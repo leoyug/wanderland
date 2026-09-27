@@ -24,8 +24,8 @@ function extractJson(content: string) {
 }
 
 const outputLanguageInstructions: Record<AppLanguage, string> = {
-  "zh-CN": "description 必须使用自然、简洁的简体中文，不超过 120 个汉字；产品名、品牌名、技术名等必要专有名词可以保留原文。tags 也优先使用简体中文。",
-  "en-US": "description must use concise, natural English and stay within 120 words. Product, brand, and technology names may retain their original spelling. tags should also use English where possible.",
+  "zh-CN": "description 必须使用自然、简洁的简体中文，不超过 120 个汉字；AI、skill 等术语及产品、品牌、技术专有名称可以保留原文。tags 使用简体中文。",
+  "en-US": "description must use concise, natural English and stay within 120 words. Terms such as AI and skill, plus product, brand, and technology names, may retain their original spelling. tags must use English.",
 };
 
 export class OpenAiCompatibleProvider implements AiProvider {
@@ -79,7 +79,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
           messages: [
             {
               role: "system",
-              content: `你是个人灵感库的整理助手。无论网页原文使用什么语言，${outputLanguageInstructions[this.options.outputLanguage ?? "zh-CN"]} 标签优先复用已有标签或别名，避免近义词和重复概念。只返回 JSON：{\"description\":\"识别性描述\",\"tags\":[\"3到5个简洁标签\"]}，不要返回 Markdown。`,
+              content: `你是个人灵感库的整理助手。无论网页原文使用什么语言，${outputLanguageInstructions[this.options.outputLanguage ?? "zh-CN"]} 已有标签和别名可用于识别概念；仅在其语言符合目标语言或属于专有名称时复用原拼写，避免近义词和重复概念。只返回 JSON：{\"description\":\"识别性描述\",\"tags\":[\"3到5个简洁标签\"]}，不要返回 Markdown。`,
             },
             {
               role: "user",

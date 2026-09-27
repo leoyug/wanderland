@@ -115,7 +115,7 @@ src/
 
 Manifest V3 的 Service Worker 会在闲置时停止，因此抓取和 AI 处理任务必须先持久化，再异步执行。
 
-界面语言通过 `src/i18n/language.ts` 统一管理并保存在 `chrome.storage.local`。V1 默认使用 `zh-CN` 且暂不显示语言切换入口；AI 描述与标签从该设置读取输出语言，不读取网页原文语言。后续增加语言选择时扩展 `supportedAppLanguages` 并调用同一读写接口，Provider 与持久化任务结构保持不变。
+界面语言通过 `src/i18n/language.ts` 统一管理并保存在 `chrome.storage.local`，提供 `system | zh-CN | en-US` 三种偏好；未设置时默认 `zh-CN`。`system` 根据浏览器首选语言解析为中文或英文，并响应浏览器语言变化。Dashboard 与网页内快速收藏浮层共享偏好，界面文案即时更新。由于扩展存储限制在可信上下文内，浮层通过与 Service Worker 的 Runtime Port 接收初始语言和后续变更，不读取当前网页的 localStorage。Service Worker 在每次 AI 任务开始时读取当前生效语言用于新生成的描述与标签；切换偏好不修改 IndexedDB 中已保存的标题、描述或标签，也不重新排入 AI 队列。
 
 参考：[Chrome Service Worker 迁移说明](https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers)
 

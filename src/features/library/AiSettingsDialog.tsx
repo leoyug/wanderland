@@ -10,6 +10,7 @@ import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 import { SelectMenu } from "@/src/components/ui/SelectMenu";
 import { Switch } from "@/src/components/ui/Switch";
+import { t } from "@/src/i18n/ui";
 
 const emptySummary: AiTaskSummary = { pending: 0, running: 0, failed: 0, complete: 0 };
 const apiKeyStorageOptions = [
@@ -37,7 +38,7 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       setSettings(view);
       setHasApiKey(view.hasApiKey);
       setSummary(taskSummary);
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : "无法读取 AI 设置"));
+    }).catch((reason) => setError(reason instanceof Error ? t(reason.message) : t("无法读取 AI 设置")));
   }, [isOpen]);
 
   const save = async () => {
@@ -46,8 +47,8 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
     try {
       if (settings.enabled) {
         const granted = await browser.permissions.request({ origins: [endpointPermissionPattern(settings.endpoint)] });
-        if (!granted) throw new Error("需要允许访问当前 Provider 域名，才能发送 AI 请求。");
-        if (!apiKey.trim() && !hasApiKey) throw new Error("请填写 API Key。");
+        if (!granted) throw new Error(t("需要允许访问当前 Provider 域名，才能发送 AI 请求。"));
+        if (!apiKey.trim() && !hasApiKey) throw new Error(t("请填写 API Key。"));
       }
       const view = await browser.runtime.sendMessage({
         type: "ai:config:save",
@@ -60,7 +61,7 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       const taskSummary = await browser.runtime.sendMessage({ type: "ai:tasks:summary" } satisfies ExtensionRequest) as AiTaskSummary;
       setSummary(taskSummary);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "保存 AI 设置失败");
+      setError(reason instanceof Error ? t(reason.message) : t("保存 AI 设置失败"));
       setState("ready");
     }
   };
@@ -71,7 +72,7 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       const next = await browser.runtime.sendMessage({ type: "ai:retry-failed" } satisfies ExtensionRequest) as AiTaskSummary;
       setSummary(next);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "重试 AI 任务失败");
+      setError(reason instanceof Error ? t(reason.message) : t("重试 AI 任务失败"));
     }
   };
 
@@ -80,21 +81,21 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
     setConnectionMessage("");
     try {
       const granted = await browser.permissions.request({ origins: [endpointPermissionPattern(settings.endpoint)] });
-      if (!granted) throw new Error("需要允许访问当前 Provider 域名，才能测试连接。");
+      if (!granted) throw new Error(t("需要允许访问当前 Provider 域名，才能测试连接。"));
       await browser.runtime.sendMessage({
         type: "ai:config:test",
         settings: { ...settings, apiKey: apiKey.trim() || undefined },
       } satisfies ExtensionRequest);
       setConnectionState("success");
-      setConnectionMessage("连接成功，API Key、Endpoint 和 Model 可用。");
+      setConnectionMessage(t("连接成功，API Key、Endpoint 和 Model 可用。"));
     } catch (reason) {
       setConnectionState("error");
-      setConnectionMessage(reason instanceof Error ? reason.message : "连接测试失败");
+      setConnectionMessage(reason instanceof Error ? t(reason.message) : t("连接测试失败"));
     }
   };
 
   const setStorage = (apiKeyStorage: ApiKeyStorage) => setSettings((current) => ({ ...current, apiKeyStorage }));
-  const selectedStorageDescription = apiKeyStorageOptions.find((option) => option.value === settings.apiKeyStorage)?.description ?? "浏览器完全退出后需要重新填写。";
+  const selectedStorageDescription = t(apiKeyStorageOptions.find((option) => option.value === settings.apiKeyStorage)?.description ?? "浏览器完全退出后需要重新填写。");
   const setProvider = (provider: AiSettings["provider"]) => {
     if (provider !== settings.provider) {
       setHasApiKey(false);
@@ -113,24 +114,24 @@ export function AiSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose
       <Modal className="form-modal settings-modal ai-settings-modal">
         <Dialog className="form-dialog">
           {({ close }) => <>
-            <header className="form-dialog-header settings-header"><div className="form-dialog-icon"><RiSparkling2Line size={20} /></div><div><DialogTitle>AI 助手</DialogTitle><p>可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。</p></div><Button size="icon" variant="ghost" aria-label="关闭 AI 设置" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header settings-header"><div className="form-dialog-icon"><RiSparkling2Line size={20} /></div><div><DialogTitle>{t("AI 助手")}</DialogTitle><p>{t("可选的 OpenAI-compatible Provider，不会影响本地添加、编辑与搜索。")}</p></div><Button size="icon" variant="ghost" aria-label={t("关闭 AI 设置")} onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body ai-settings-body">
-              <Switch className="ai-toggle" label="启用 AI 自动整理" description="关闭后已保存的收藏项和本地功能保持不变。" isSelected={settings.enabled} onChange={(enabled) => setSettings((current) => ({ ...current, enabled }))} />
-              <label className="ai-provider-field"><span>Provider</span><span className="ai-provider-select"><select value={settings.provider} onChange={(event) => setProvider(event.target.value as AiSettings["provider"])}><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="custom">自定义 OpenAI-compatible</option></select><RiArrowDownSLine size={18} aria-hidden="true" /></span><small>{settings.provider === "deepseek" ? "使用 DeepSeek 官方 API，默认 deepseek-v4-flash。" : "选择预设会同步填入官方 Endpoint 和默认模型。"}</small></label>
+              <Switch className="ai-toggle" label={t("启用 AI 自动整理")} description={t("关闭后已保存的收藏项和本地功能保持不变。")} isSelected={settings.enabled} onChange={(enabled) => setSettings((current) => ({ ...current, enabled }))} />
+              <label className="ai-provider-field"><span>Provider</span><span className="ai-provider-select"><select value={settings.provider} onChange={(event) => setProvider(event.target.value as AiSettings["provider"])}><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="custom">{t("自定义 OpenAI-compatible")}</option></select><RiArrowDownSLine size={18} aria-hidden="true" /></span><small>{settings.provider === "deepseek" ? t("使用 DeepSeek 官方 API，默认 deepseek-v4-flash。") : t("选择预设会同步填入官方 Endpoint 和默认模型。")}</small></label>
               <Field label="Endpoint" value={settings.endpoint} onChange={(endpoint) => setSettings((current) => ({ ...current, endpoint }))} placeholder="https://api.openai.com/v1" />
               <Field label="Model" value={settings.model} onChange={(model) => setSettings((current) => ({ ...current, model }))} placeholder="gpt-4.1-mini" />
-              <Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? "已保存；留空保持不变" : "填写你自己的 API Key"} />
-              <div className="ai-connection-test"><Button variant="secondary" size="sm" isDisabled={connectionState === "testing"} onPress={() => void testConnection()}><RiRefreshLine size={15} />{connectionState === "testing" ? "正在测试…" : "测试连接"}</Button>{connectionMessage ? <span className={connectionState === "success" ? "is-success" : "is-error"} role="status">{connectionMessage}</span> : <small>会发送一个最小请求，不会保存当前表单或写入 API Key。</small>}</div>
+              <Field label="API Key" type="password" value={apiKey} onChange={setApiKey} placeholder={hasApiKey ? t("已保存；留空保持不变") : t("填写你自己的 API Key")} />
+              <div className="ai-connection-test"><Button variant="secondary" size="sm" isDisabled={connectionState === "testing"} onPress={() => void testConnection()}><RiRefreshLine size={15} />{connectionState === "testing" ? t("正在测试…") : t("测试连接")}</Button>{connectionMessage ? <span className={connectionState === "success" ? "is-success" : "is-error"} role="status">{connectionMessage}</span> : <small>{t("会发送一个最小请求，不会保存当前表单或写入 API Key。")}</small>}</div>
               <div className="ai-key-storage-setting">
-                <div className="ai-key-storage-setting-copy"><strong>Key 保存方式</strong><small>{selectedStorageDescription}</small></div>
-                <SelectMenu<ApiKeyStorage> label="Key 保存方式" value={settings.apiKeyStorage} options={apiKeyStorageOptions} onChange={setStorage} />
+                <div className="ai-key-storage-setting-copy"><strong>{t("Key 保存方式")}</strong><small>{selectedStorageDescription}</small></div>
+                <SelectMenu<ApiKeyStorage> label={t("Key 保存方式")} value={settings.apiKeyStorage} options={apiKeyStorageOptions.map((option) => ({ ...option, label: t(option.label), description: t(option.description) }))} onChange={setStorage} />
               </div>
-              <div className="ai-privacy-note"><strong>发送范围</strong><p>只会向你配置的 Provider 发送收藏项链接、标题、现有描述、最多 12,000 字的正文与已有标签名。Key 不进入 IndexedDB，也不包含在数据导入中。</p></div>
-              <div className="ai-task-status"><div><strong>处理任务</strong><span>等待 {summary.pending} · 失败 {summary.failed} · 完成 {summary.complete}</span></div><Button variant="secondary" size="sm" isDisabled={!summary.failed} onPress={() => void retryFailed()}><RiRefreshLine size={15} />重试失败任务</Button></div>
+              <div className="ai-privacy-note"><strong>{t("发送范围")}</strong><p>{t("只会向你配置的 Provider 发送收藏项链接、标题、现有描述、最多 12,000 字的正文与已有标签名。Key 不进入 IndexedDB，也不包含在数据导入中。")}</p></div>
+              <div className="ai-task-status"><div><strong>{t("处理任务")}</strong><span>{t("等待 ")}{summary.pending}{t(" · 失败 ")}{summary.failed}{t(" · 完成 ")}{summary.complete}</span></div><Button variant="secondary" size="sm" isDisabled={!summary.failed} onPress={() => void retryFailed()}><RiRefreshLine size={15} />{t("重试失败任务")}</Button></div>
               {error ? <p className="form-error" role="alert">{error}</p> : null}
-              {state === "saved" ? <p className="form-success" role="status">设置已保存，可处理的任务已开始运行。</p> : null}
+              {state === "saved" ? <p className="form-success" role="status">{t("设置已保存，可处理的任务已开始运行。")}</p> : null}
             </div>
-            <footer className="form-dialog-footer"><Button variant="ghost" onPress={close}>取消</Button><Button variant="primary" isDisabled={state === "saving"} onPress={() => void save()}>{state === "saving" ? "保存中…" : "保存 AI 设置"}</Button></footer>
+            <footer className="form-dialog-footer"><Button variant="ghost" onPress={close}>{t("取消")}</Button><Button variant="primary" isDisabled={state === "saving"} onPress={() => void save()}>{state === "saving" ? t("保存中…") : t("保存 AI 设置")}</Button></footer>
           </>}
         </Dialog>
       </Modal>

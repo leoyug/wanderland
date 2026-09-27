@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/Button";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
+import { t } from "@/src/i18n/ui";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -51,8 +52,8 @@ export function ConfirmDialog({
             <p>{description}</p>
           </div>
           <div className="confirm-actions">
-            <Button variant="ghost" autoFocus isDisabled={isPending} onPress={onClose}>{cancelLabel}</Button>
-            <Button variant="danger" isDisabled={isPending} onPress={() => void confirm()}>{isPending ? "删除中…" : confirmLabel}</Button>
+            <Button variant="ghost" autoFocus isDisabled={isPending} onPress={onClose}>{t(cancelLabel)}</Button>
+            <Button variant="danger" isDisabled={isPending} onPress={() => void confirm()}>{isPending ? t("删除中…") : t(confirmLabel)}</Button>
           </div>
         </Dialog>
       </Modal>

@@ -16,6 +16,8 @@ import { inspirationRepository } from "@/src/db/repository";
 import type { ExtensionRequest } from "@/src/capture/types";
 import type { LibraryItem, SavedItemKind, UpdateSavedItemInput } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
+import { t, tf } from "@/src/i18n/ui";
+import { formatUiDate } from "@/src/i18n/date";
 
 interface DetailDialogProps {
   item: LibraryItem | null;
@@ -93,9 +95,9 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
   }, [item?.id, mode, isEditing]);
 
   if (!item) return null;
-  const kindLabel = { website: "网站", article: "文章", follow: "关注源" }[item.kind];
-  const snapshotLabel = item.snapshotStatus === "complete" ? "完整" : item.snapshotStatus === "partial" ? "部分内容" : item.snapshotStatus === "pending" ? "等待采集" : "采集失败";
-  const aiLabel = item.aiStatus === "complete" ? "已完成" : item.aiStatus === "failed" ? "处理失败" : "等待处理";
+  const kindLabel = { website: t("网站"), article: t("文章"), follow: t("关注源") }[item.kind];
+  const snapshotLabel = item.snapshotStatus === "complete" ? t("完整") : item.snapshotStatus === "partial" ? t("部分内容") : item.snapshotStatus === "pending" ? t("等待采集") : t("采集失败");
+  const aiLabel = item.aiStatus === "complete" ? t("已完成") : item.aiStatus === "failed" ? t("处理失败") : t("等待处理");
   const retryAi = async () => {
     setAiRetrying(true);
     try {
@@ -110,7 +112,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
       setSaveError("");
       setIsEditing(false);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "保存失败，请稍后重试。");
+      setSaveError(error instanceof Error ? t(error.message) : t("保存失败，请稍后重试。"));
     }
   };
   const cancelEdit = () => {
@@ -128,7 +130,7 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     const image = Array.from(event.clipboardData.files).find((file) => file.type.startsWith("image/"));
     event.preventDefault();
     if (!image) {
-      setCoverPasteError("剪贴板中没有图片。请先复制图片，再粘贴到这里。");
+      setCoverPasteError(t("剪贴板中没有图片。请先复制图片，再粘贴到这里。"));
       return;
     }
     setCoverBlob(image);
@@ -139,48 +141,48 @@ export function DetailDialog({ item, onClose, onNavigate, onUpdate, onDelete, si
     <ModalOverlay className="detail-overlay" isOpen onOpenChange={(open) => !open && onClose()} isDismissable>
       <Modal className="detail-modal">
         <SmoothCorners className="detail-smooth-surface" corners={{ radius: 16, smoothing: 0.6 }} autoEffects={false}>
-        <Dialog className={cn("detail-dialog", `kind-${item.kind}`, isEditing && "is-editing")} aria-label={mode === "snapshot" ? "正文快照" : "收藏项详情"}>
+        <Dialog className={cn("detail-dialog", `kind-${item.kind}`, isEditing && "is-editing")} aria-label={mode === "snapshot" ? t("正文快照") : t("收藏项详情")}>
           <header className="detail-header">
-            <Button size="icon" variant="ghost" aria-label={mode === "details" ? "关闭详情" : "返回详情"} onPress={() => mode === "details" ? onClose() : setMode("details")}><RiCloseLine size={19} /></Button>
-            <span className="detail-host" title={item.sourceLabel}>{mode === "snapshot" ? "本地正文快照" : item.sourceLabel}</span>
-            {mode === "details" ? isEditing ? <div className="detail-edit-controls"><Button variant="ghost" size="sm" onPress={cancelEdit}>取消</Button><Button variant="primary" size="sm" onPress={() => void save()}>保存修改</Button></div> : <a className="button button-primary button-sm" href={item.url} target="_blank" rel="noreferrer">打开原网页 <RiExternalLinkLine size={15} /></a> : <Button variant="primary" size="sm" onPress={() => setMode("details")}>返回详情</Button>}
+            <Button size="icon" variant="ghost" aria-label={mode === "details" ? t("关闭详情") : t("返回详情")} onPress={() => mode === "details" ? onClose() : setMode("details")}><RiCloseLine size={19} /></Button>
+            <span className="detail-host" title={item.sourceLabel}>{mode === "snapshot" ? t("本地正文快照") : item.sourceLabel}</span>
+            {mode === "details" ? isEditing ? <div className="detail-edit-controls"><Button variant="ghost" size="sm" onPress={cancelEdit}>{t("取消")}</Button><Button variant="primary" size="sm" onPress={() => void save()}>{t("保存修改")}</Button></div> : <a className="button button-primary button-sm" href={item.url} target="_blank" rel="noreferrer">{t("打开原网页 ")}<RiExternalLinkLine size={15} /></a> : <Button variant="primary" size="sm" onPress={() => setMode("details")}>{t("返回详情")}</Button>}
           </header>
           <div ref={scrollRef} className="detail-scroll">
             {mode === "snapshot" ? (
-              <article className="snapshot-reader" data-detail-reveal><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><DialogTitle>{snapshot?.title || item.title}</DialogTitle>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">这个收藏项还没有可阅读的正文快照。</p>}</article>
+              <article className="snapshot-reader" data-detail-reveal><span>{snapshot?.byline || item.siteHost} · {snapshotLabel}</span><DialogTitle>{snapshot?.title || item.title}</DialogTitle>{snapshot?.cleanHtml ? <div className="snapshot-content" dangerouslySetInnerHTML={{ __html: snapshot.cleanHtml }} /> : <p className="snapshot-empty">{t("这个收藏项还没有可阅读的正文快照。")}</p>}</article>
             ) : mode === "image" ? (
               <div className="image-viewer" data-detail-reveal><CoverArt item={item} large fit="contain" /><p>{item.title}</p></div>
             ) : (
               <>
-                {item.kind !== "article" || item.cover.image || item.cover.blob ? <div className="detail-cover-wrap" data-detail-reveal><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />查看封面</Button> : null}</div> : null}
+                {item.kind !== "article" || item.cover.image || item.cover.blob ? <div className="detail-cover-wrap" data-detail-reveal><CoverArt item={item} large />{(item.cover.image || item.cover.blob) ? <Button variant="secondary" size="sm" className="detail-image-action" onPress={() => setMode("image")}><RiImageLine size={15} />{t("查看封面")}</Button> : null}</div> : null}
                 <div className="detail-copy" data-detail-reveal>
                   {isEditing ? <form className="detail-inline-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
-                    <Field label="标题" value={title} onChange={setTitle} />
-                    <div className="field detail-kind-field"><label>内容类型</label><SelectMenu<SavedItemKind> label="内容类型" value={kind} options={kindOptions} onChange={(nextKind) => { setKind(nextKind); setSaveError(""); }} /><small>保存后会按新类型重新进行 AI 整理；人工描述和手动调整的标签保持优先。</small></div>
-                    <Field label="描述" value={description} onChange={setDescription} multiline />
-                    <TagInput label="标签" tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
+                    <Field label={t("标题")} value={title} onChange={setTitle} />
+                    <div className="field detail-kind-field"><label>{t("内容类型")}</label><SelectMenu<SavedItemKind> label={t("内容类型")} value={kind} options={kindOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={(nextKind) => { setKind(nextKind); setSaveError(""); }} /><small>{t("保存后会按新类型重新进行 AI 整理；人工描述和手动调整的标签保持优先。")}</small></div>
+                    <Field label={t("描述")} value={description} onChange={setDescription} multiline />
+                    <TagInput label={t("标签")} tags={tags} options={tagOptions} onChange={setTags} placement="bottom" revealBelowOnOpen autoFocus={initialEditFocus === "tags"} />
                     <div className="icon-appearance-editor">
-                      <span className="icon-appearance-title" aria-hidden="true">图标底色</span>
+                      <span className="icon-appearance-title" aria-hidden="true">{t("图标底色")}</span>
                       <div className="icon-appearance-content">
                         <div className="icon-appearance-preview"><SiteIcon item={item} variant={kind === "follow" ? "avatar" : "mark"} backgroundOverride={iconBackground} /></div>
-                        <div className="icon-appearance-details"><RadioGroup label="图标底色" value={iconBackground} options={iconBackgroundOptions} onChange={setIconBackground} className="icon-appearance-options" orientation="horizontal" /><small>自动模式仅在能够读取图像时识别浅色透明标志；浅底或深底会覆盖自动结果。</small></div>
+                        <div className="icon-appearance-details"><RadioGroup label={t("图标底色")} value={iconBackground} options={iconBackgroundOptions.map((option) => ({ ...option, label: t(option.label) }))} onChange={setIconBackground} className="icon-appearance-options" orientation="horizontal" /><small>{t("自动模式仅在能够读取图像时识别浅色透明标志；浅底或深底会覆盖自动结果。")}</small></div>
                       </div>
                     </div>
                     {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-                    <div className="cover-picker"><span>封面</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">更换封面</label><small>{coverBlob ? `已选择：${coverBlob.name}` : "保存后将锁定封面，不再被自动采集覆盖。"}</small></div><div className="cover-paste-target" tabIndex={0} role="textbox" aria-label="粘贴封面图片" aria-multiline="false" onPaste={pasteCover}>点击这里，然后按 ⌘V / Ctrl+V 粘贴图片</div>{coverPasteError ? <small role="alert">{coverPasteError}</small> : null}<input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => { setCoverBlob(event.target.files?.[0]); setCoverPasteError(""); }} /></div>
+                    <div className="cover-picker"><span>{t("封面")}</span><div><label className="button button-secondary button-sm" htmlFor="detail-cover-input">{t("更换封面")}</label><small>{coverBlob ? tf("已选择：{name}", { name: coverBlob.name }) : t("保存后将锁定封面，不再被自动采集覆盖。")}</small></div><div className="cover-paste-target" tabIndex={0} role="textbox" aria-label={t("粘贴封面图片")} aria-multiline="false" onPaste={pasteCover}>{t("点击这里，然后按 ⌘V / Ctrl+V 粘贴图片")}</div>{coverPasteError ? <small role="alert">{coverPasteError}</small> : null}<input id="detail-cover-input" type="file" accept="image/*" onChange={(event) => { setCoverBlob(event.target.files?.[0]); setCoverPasteError(""); }} /></div>
                   </form> : <>
-                    <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || "暂无描述"}</p></div></div>
+                    <div className="detail-title-row"><div><DialogTitle>{item.title}</DialogTitle><p>{item.description || t("暂无描述")}</p></div></div>
                     <section className="detail-section"><div className="detail-taxonomy"><span className="kind-chip">{kindLabel}</span><div className="tag-list">{item.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}</div></div></section>
                   </>}
-                  {siteItemCount > 1 ? <Button variant="ghost" size="sm" onPress={onShowSite}>查看来自 {item.siteHost} 的 {siteItemCount} 个收藏项</Button> : null}
-                  <div className="snapshot-row"><div><strong>正文快照</strong><span>{snapshotLabel} · 添加于 {item.savedAt}</span></div>{item.snapshotStatus === "failed" ? <a className="button button-secondary button-sm" href={item.url} target="_blank" rel="noreferrer" title="打开来源页面后，可通过扩展 Popup 重试采集">打开来源重试</a> : <Button variant="secondary" size="sm" isDisabled={!snapshot?.cleanHtml} onPress={() => setMode("snapshot")}>{item.snapshotStatus === "pending" ? "等待采集" : "阅读快照"}</Button>}</div>
-                  <div className="snapshot-row ai-status-row"><div><strong><RiSparkling2Line size={15} />AI 整理</strong><span>{item.aiError || `${aiLabel}。人工描述和标签始终优先。`}</span></div>{item.aiStatus === "failed" ? <Button variant="secondary" size="sm" isDisabled={aiRetrying} onPress={() => void retryAi()}><RiRefreshLine size={15} />{aiRetrying ? "重试中…" : "重试 AI"}</Button> : null}</div>
-                  {!isEditing ? <div className="detail-actions"><Button variant="secondary" onPress={() => setIsEditing(true)}><RiEditLine size={16} />编辑</Button><Button variant="danger" onPress={() => void onDelete()}><RiDeleteBinLine size={16} />删除</Button></div> : null}
+                  {siteItemCount > 1 ? <Button variant="ghost" size="sm" onPress={onShowSite}>{tf("查看来自 {host} 的 {count} 个收藏项", { host: item.siteHost, count: siteItemCount })}</Button> : null}
+                  <div className="snapshot-row"><div><strong>{t("正文快照")}</strong><span>{tf("{status} · 添加于 {date}", { status: snapshotLabel, date: formatUiDate(item.createdAt) })}</span></div>{item.snapshotStatus === "failed" ? <a className="button button-secondary button-sm" href={item.url} target="_blank" rel="noreferrer" title={t("打开来源页面后，可通过扩展 Popup 重试采集")}>{t("打开来源重试")}</a> : <Button variant="secondary" size="sm" isDisabled={!snapshot?.cleanHtml} onPress={() => setMode("snapshot")}>{item.snapshotStatus === "pending" ? t("等待采集") : t("阅读快照")}</Button>}</div>
+                  <div className="snapshot-row ai-status-row"><div><strong><RiSparkling2Line size={15} />{t("AI 整理")}</strong><span>{item.aiError ? t(item.aiError) : tf("{status}。人工描述和标签始终优先。", { status: aiLabel })}</span></div>{item.aiStatus === "failed" ? <Button variant="secondary" size="sm" isDisabled={aiRetrying} onPress={() => void retryAi()}><RiRefreshLine size={15} />{aiRetrying ? t("重试中…") : t("重试 AI")}</Button> : null}</div>
+                  {!isEditing ? <div className="detail-actions"><Button variant="secondary" onPress={() => setIsEditing(true)}><RiEditLine size={16} />{t("编辑")}</Button><Button variant="danger" onPress={() => void onDelete()}><RiDeleteBinLine size={16} />{t("删除")}</Button></div> : null}
                 </div>
               </>
             )}
           </div>
-          <footer className="detail-footer">{mode === "details" && !isEditing ? <><Button size="icon" variant="ghost" aria-label="上一个收藏项" onPress={() => onNavigate(-1)}><RiArrowLeftLine size={18} /></Button><span>使用方向键切换</span><Button size="icon" variant="ghost" aria-label="下一个收藏项" onPress={() => onNavigate(1)}><RiArrowRightLine size={18} /></Button></> : <span>{isEditing ? "在当前详情中编辑，保存后立即更新" : mode === "snapshot" ? "快照保存在本地，原网页变化不会影响此内容" : "封面预览"}</span>}</footer>
+          <footer className="detail-footer">{mode === "details" && !isEditing ? <><Button size="icon" variant="ghost" aria-label={t("上一个收藏项")} onPress={() => onNavigate(-1)}><RiArrowLeftLine size={18} /></Button><span>{t("使用方向键切换")}</span><Button size="icon" variant="ghost" aria-label={t("下一个收藏项")} onPress={() => onNavigate(1)}><RiArrowRightLine size={18} /></Button></> : <span>{isEditing ? t("在当前详情中编辑，保存后立即更新") : mode === "snapshot" ? t("快照保存在本地，原网页变化不会影响此内容") : t("封面预览")}</span>}</footer>
         </Dialog>
         </SmoothCorners>
       </Modal>

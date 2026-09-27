@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Checkbox, Dialog, DialogTrigger, Input, Popover, SearchField } from "react-aria-components";
 import { cn } from "@/src/lib/cn";
 import { Button } from "./Button";
+import { t, tf } from "@/src/i18n/ui";
 
 export interface FacetOption {
   id: string;
@@ -40,12 +41,12 @@ export function FacetFilter({ label, icon, options, selectedValues, onChange, se
         <RiArrowDownSLine className="facet-filter-chevron" size={15} aria-hidden="true" />
       </Button>
       <Popover className="popover-surface facet-filter-popover" placement="bottom start" offset={8}>
-        <Dialog className="facet-filter-dialog" aria-label={`筛选${label}`}>
+        <Dialog className="facet-filter-dialog" aria-label={tf("筛选{name}", { name: label })}>
           {searchable ? (
-            <SearchField className="facet-filter-search" value={query} onChange={setQuery} aria-label={`搜索${label}`}>
+            <SearchField className="facet-filter-search" value={query} onChange={setQuery} aria-label={tf("搜索{name}", { name: label })}>
               <RiSearchLine size={15} aria-hidden="true" />
-              <Input placeholder={searchPlaceholder} />
-              {query ? <Button variant="ghost" size="icon" aria-label={`清除${label}搜索`} onPress={() => setQuery("")}><RiCloseLine size={14} /></Button> : null}
+              <Input placeholder={t(searchPlaceholder)} />
+              {query ? <Button variant="ghost" size="icon" aria-label={tf("清除{name}搜索", { name: label })} onPress={() => setQuery("")}><RiCloseLine size={14} /></Button> : null}
             </SearchField>
           ) : null}
           <div className="facet-filter-options">
@@ -58,9 +59,9 @@ export function FacetFilter({ label, icon, options, selectedValues, onChange, se
                 <span className="facet-option-count">{option.count}</span>
               </Checkbox>
             ))}
-            {!visibleOptions.length ? <p className="facet-filter-empty">没有匹配的选项</p> : null}
+            {!visibleOptions.length ? <p className="facet-filter-empty">{t("没有匹配的选项")}</p> : null}
           </div>
-          {selectedValues.length ? <button type="button" className="facet-filter-clear" onClick={() => onChange([])}>清除此项筛选</button> : null}
+          {selectedValues.length ? <button type="button" className="facet-filter-clear" onClick={() => onChange([])}>{t("清除此项筛选")}</button> : null}
         </Dialog>
       </Popover>
     </DialogTrigger>

@@ -14,6 +14,7 @@ import { SavedViewReorderList } from "./SavedViewReorderList";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { Button } from "@/src/components/ui/Button";
 import { Tooltip } from "@/src/components/ui/Tooltip";
+import { t, tf } from "@/src/i18n/ui";
 
 export type SettingsSection = "appearance" | "tags" | "ai" | "bookmarks" | "backup" | "archive" | "digest" | "about";
 
@@ -48,10 +49,10 @@ const settingsItems: Array<{ id: SettingsSection; label: string; icon: ReactNode
   { id: "backup", label: "备份与恢复", icon: <RiDatabase2Line size={17} aria-hidden="true" /> },
   { id: "archive", label: "归档", icon: <RiArchiveLine size={17} aria-hidden="true" /> },
   { id: "digest", label: "内容简报", icon: <RiNewspaperLine size={17} aria-hidden="true" /> },
-  { id: "about", label: "关于WEBLOOM", icon: <RiInformationLine size={17} aria-hidden="true" /> },
+  { id: "about", label: "关于", icon: <RiInformationLine size={17} aria-hidden="true" /> },
 ];
 
-export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onOpenSettings, mode = "library", activeSettingsSection = "bookmarks", onSettingsSectionChange, onBackToLibrary, children }: AppShellProps) {
+export function AppShell({ items, activeScope, activeSavedView, savedViews, onScopeChange, onSavedViewChange, onSavedViewRename, onSavedViewDelete, onSavedViewMove, onOpenSettings, mode = "library", activeSettingsSection = "appearance", onSettingsSectionChange, onBackToLibrary, children }: AppShellProps) {
   const [areSavedViewsExpanded, setAreSavedViewsExpanded] = useState(true);
   const [isViewportNarrow, setIsViewportNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH_DEFAULT);
@@ -198,21 +199,21 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
         ? activeItems.filter((item) => !isSavedItemProcessed(item)).length
         : activeItems.filter((item) => item.kind === scope).length;
   const renderScope = (scope: LibraryScope, label: string, icon: ReactNode) => <SidebarNavItem icon={icon} label={label} count={countForScope(scope)} isActive={activeScope === scope && !activeSavedView} onPress={() => onScopeChange(scope)} tooltip={mode === "library" && isCompactSidebar ? label : undefined} />;
-  const brandButton = <Button type="button" variant="ghost" className="brand" aria-label="返回首页" onPress={handleBrandPress}><img className="brand-wordmark" src="/assets/wordmark.svg" alt="" /><img className="brand-mark" src="/assets/logo.svg" alt="" aria-hidden="true" /></Button>;
-  const settingsButton = <Button variant="ghost" className="nav-item sidebar-tool" aria-label="打开设置" onPress={onOpenSettings}><RiSettingsLine size={17} aria-hidden="true" /><span>设置</span></Button>;
-  const savedViewToggle = <Button type="button" variant="ghost" className="saved-view-toggle t-acc-head" aria-label={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} aria-expanded={areSavedViewsExpanded} onPress={() => setAreSavedViewsExpanded((isExpanded) => !isExpanded)}><span className="t-acc-chevron"><RiArrowDownSLine size={18} /></span></Button>;
+  const brandButton = <Button type="button" variant="ghost" className="brand" aria-label={t("返回首页")} onPress={handleBrandPress}><img className="brand-wordmark" src="/assets/wordmark.svg" alt="" /><img className="brand-mark" src="/assets/logo.svg" alt="" aria-hidden="true" /></Button>;
+  const settingsButton = <Button variant="ghost" className="nav-item sidebar-tool" aria-label={t("打开设置")} onPress={onOpenSettings}><RiSettingsLine size={17} aria-hidden="true" /><span>{t("设置")}</span></Button>;
+  const savedViewToggle = <Button type="button" variant="ghost" className="saved-view-toggle t-acc-head" aria-label={areSavedViewsExpanded ? t("收起快捷视图") : t("展开快捷视图")} aria-expanded={areSavedViewsExpanded} onPress={() => setAreSavedViewsExpanded((isExpanded) => !isExpanded)}><span className="t-acc-chevron"><RiArrowDownSLine size={18} /></span></Button>;
 
   return (
     <div className={`app-shell ${mode === "settings" ? "is-settings" : ""} ${isSidebarCollapsed ? "is-sidebar-collapsed" : ""} ${isSidebarResizing ? "is-sidebar-resizing" : ""}`} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
       <aside className="sidebar">
-        <div className="sidebar-resize-handle" role="separator" tabIndex={isViewportNarrow ? -1 : 0} aria-orientation="vertical" aria-label="调整侧边栏宽度" aria-valuemin={SIDEBAR_WIDTH_COLLAPSED} aria-valuemax={SIDEBAR_WIDTH_MAX} aria-valuenow={sidebarWidth} aria-valuetext={isSidebarCollapsed ? "已最小化" : `${sidebarWidth} 像素`} onPointerDown={handleSidebarResizePointerDown} onPointerMove={handleSidebarResizePointerMove} onPointerUp={stopSidebarResize} onPointerCancel={stopSidebarResize} onKeyDown={handleSidebarResizeKeyDown} />
-        {mode === "library" && isCompactSidebar ? <Tooltip content="返回首页" placement="right" offset={10} className="sidebar-tooltip-bubble">{brandButton}</Tooltip> : brandButton}
+        <div className="sidebar-resize-handle" role="separator" tabIndex={isViewportNarrow ? -1 : 0} aria-orientation="vertical" aria-label={t("调整侧边栏宽度")} aria-valuemin={SIDEBAR_WIDTH_COLLAPSED} aria-valuemax={SIDEBAR_WIDTH_MAX} aria-valuenow={sidebarWidth} aria-valuetext={isSidebarCollapsed ? t("已最小化") : tf("{count} 像素", { count: sidebarWidth })} onPointerDown={handleSidebarResizePointerDown} onPointerMove={handleSidebarResizePointerMove} onPointerUp={stopSidebarResize} onPointerCancel={stopSidebarResize} onKeyDown={handleSidebarResizeKeyDown} />
+        {mode === "library" && isCompactSidebar ? <Tooltip content={t("返回首页")} placement="right" offset={10} className="sidebar-tooltip-bubble">{brandButton}</Tooltip> : brandButton}
         <div className="sidebar-navigation-wrap">
-        <nav ref={navigationRef} aria-label={mode === "settings" ? "设置导航" : "收藏库导航"} className={`sidebar-navigation ${mode === "settings" ? "settings-navigation" : ""}`}>
-          {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={label} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? label : undefined} />)}</div> : <>
-            <section><p className="nav-label">收藏库</p><div className="nav-list">{renderScope("all", "全部", <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", "未处理", <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", "星标", <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
-            <section><p className="nav-label">内容列表</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, label, icon)}</span>)}</div></section>
-            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">快捷视图</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? "收起快捷视图" : "展开快捷视图"} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner">
+        <nav ref={navigationRef} aria-label={mode === "settings" ? t("设置导航") : t("收藏库导航")} className={`sidebar-navigation ${mode === "settings" ? "settings-navigation" : ""}`}>
+          {mode === "settings" ? <div className="nav-list settings-nav-list">{settingsItems.map(({ id, label, icon }) => <SidebarNavItem key={id} icon={icon} label={t(label)} isActive={activeSettingsSection === id} onPress={() => onSettingsSectionChange?.(id)} tooltip={isCompactSidebar ? t(label) : undefined} />)}</div> : <>
+            <section><p className="nav-label">{t("收藏库")}</p><div className="nav-list">{renderScope("all", t("全部"), <RiInbox2Line size={17} aria-hidden="true" />)}{renderScope("unprocessed", t("未处理"), <RiArchiveStackLine size={17} aria-hidden="true" />)}{renderScope("favorites", t("星标"), <RiBookmark3Line size={17} aria-hidden="true" />)}</div></section>
+            <section><p className="nav-label">{t("内容列表")}</p><div className="nav-list">{kindItems.map(({ id, label, icon }) => <span className="nav-entry" key={id}>{renderScope(id, t(label), icon)}</span>)}</div></section>
+            <section className="saved-views-section t-acc" data-open={areSavedViewsExpanded}><div className="nav-section-heading"><p className="nav-label">{t("快捷视图")}</p>{isCompactSidebar ? <Tooltip content={areSavedViewsExpanded ? t("收起快捷视图") : t("展开快捷视图")} placement="right" offset={10} className="sidebar-tooltip-bubble">{savedViewToggle}</Tooltip> : savedViewToggle}</div><div className="saved-views-panel t-acc-panel"><div className="saved-views-panel-inner t-acc-panel-inner">
               <SavedViewReorderList views={savedViews} activeViewId={activeSavedView} onSelect={onSavedViewChange} onRename={onSavedViewRename} onDelete={onSavedViewDelete} onMove={onSavedViewMove} showTooltip={mode === "library" && isCompactSidebar} />
             </div></div></section>
           </>}
@@ -220,7 +221,7 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
         {sidebarScrollbar.isVisible ? <div className="sidebar-scrollbar" aria-hidden="true" onPointerDown={handleScrollbarPointerDown} onPointerMove={handleScrollbarPointerMove} onPointerUp={stopScrollbarDrag} onPointerCancel={stopScrollbarDrag}><div className="sidebar-scrollbar-thumb" style={{ height: sidebarScrollbar.height, transform: `translateY(${sidebarScrollbar.top}px)` }} /></div> : null}
         </div>
         <div className="sidebar-bottom">
-          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>返回WEBLOOM</span></button> : isCompactSidebar ? <Tooltip content="设置" placement="right" offset={10} className="sidebar-tooltip-bubble">{settingsButton}</Tooltip> : settingsButton}
+          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>{t("返回WEBLOOM")}</span></button> : isCompactSidebar ? <Tooltip content={t("设置")} placement="right" offset={10} className="sidebar-tooltip-bubble">{settingsButton}</Tooltip> : settingsButton}
         </div>
       </aside>
       <main className="main-content">{children}</main>

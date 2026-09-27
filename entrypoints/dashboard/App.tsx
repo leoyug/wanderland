@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { LibraryPage } from "@/src/features/library/LibraryPage";
 import { SettingsPage } from "@/src/features/settings/SettingsPage";
+import { useAppLanguage } from "@/src/i18n/useLanguage";
 
 const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import("@/src/features/design-system/DesignSystemPage").then((module) => ({ default: module.DesignSystemPage })))
   : null;
 
 export function App() {
+  useAppLanguage();
   const [route, setRoute] = useState(window.location.hash);
 
   useEffect(() => {

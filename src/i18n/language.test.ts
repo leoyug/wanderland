@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { defaultAppLanguage, getAppLanguage, setAppLanguage } from "./language";
+import { defaultAppLanguage, getAppLanguage, resolveAppLanguage, setAppLanguage } from "./language";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,5 +23,11 @@ describe("app language", () => {
     } } });
 
     await expect(getAppLanguage()).resolves.toBe("zh-CN");
+  });
+
+  it("resolves system preference from the browser language", () => {
+    expect(resolveAppLanguage("system", "zh-HK")).toBe("zh-CN");
+    expect(resolveAppLanguage("system", "en-GB")).toBe("en-US");
+    expect(resolveAppLanguage("zh-CN", "en-GB")).toBe("zh-CN");
   });
 });

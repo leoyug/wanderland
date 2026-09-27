@@ -1,5 +1,6 @@
 import { RiBookmarkFill, RiBookmarkLine } from "@remixicon/react";
 import type { CSSProperties } from "react";
+import { t } from "@/src/i18n/ui";
 
 interface FavoriteButtonProps {
   isFavorite: boolean;
@@ -16,7 +17,7 @@ export function FavoriteButton({ isFavorite, onToggle }: FavoriteButtonProps) {
     <button
       className={`favorite-button${isFavorite ? " is-active" : ""}`}
       type="button"
-      aria-label={isFavorite ? "取消星标" : "添加星标"}
+      aria-label={isFavorite ? t("取消星标") : t("添加星标")}
       aria-pressed={isFavorite}
       onClick={(event) => {
         event.stopPropagation();

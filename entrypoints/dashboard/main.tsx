@@ -5,9 +5,10 @@ import "@/src/design-system/tokens.css";
 import "@/src/design-system/theme.css";
 import { ToastProvider } from "@/src/components/ui/Toast";
 import { initializeTheme } from "@/src/lib/themePreferences";
+import { initializeLanguage } from "@/src/i18n/language";
 import { App } from "./App";
 
-await initializeTheme();
+await Promise.all([initializeTheme(), initializeLanguage()]);
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode><ToastProvider><App /></ToastProvider></React.StrictMode>,
 );

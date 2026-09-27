@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Tag } from "@/src/domain/inspiration";
+import { t } from "@/src/i18n/ui";
 
 interface TagInputProps {
   label: string;
@@ -139,19 +140,19 @@ export function TagInput({ label, tags, options, onChange, placement = "auto", r
     <span className="tag-input-label">{label}</span>
     <div className="tag-input-control" onClick={() => inputRef.current?.focus()}>
       {tags.map((tag) => <button key={tag} type="button" className="tag-input-chip" onClick={(event) => { event.stopPropagation(); onChange(tags.filter((item) => item !== tag)); }}>{tag}<RiCloseLine size={13} /></button>)}
-      <input ref={inputRef} autoFocus={autoFocus} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? "继续添加" : "添加标签"} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
+      <input ref={inputRef} autoFocus={autoFocus} value={query} onFocus={openMenu} onChange={(event) => { setQuery(event.target.value); setActiveIndex(-1); setOpen(true); }} onKeyDown={onKeyDown} placeholder={tags.length ? t("继续添加") : t("添加标签")} aria-label={label} aria-expanded={open} aria-controls="tag-input-listbox" role="combobox" />
     </div>
     {open && popoverStyle ? createPortal(<div ref={popoverRef} className="tag-input-popover" id="tag-input-listbox" role="listbox" style={popoverStyle} onMouseLeave={() => setHoveredIndex(-1)}>
       {query.trim() ? <>
-        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === 0} className={activeIndex === 0 ? "is-active" : hoveredIndex === 0 ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(0)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>创建新标签“{normalize(query)}”</button> : null}
+        {canCreate ? <button type="button" role="option" aria-selected={activeIndex === 0} className={activeIndex === 0 ? "is-active" : hoveredIndex === 0 ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(0)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(query)}>{t("创建新标签“")}{normalize(query)}”</button> : null}
         {matches.map((tag, index) => {
           const optionIndex = index + (canCreate ? 1 : 0);
           return <button key={tag.id} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>;
         })}
-        {!matches.length && !canCreate ? <p>没有可添加的标签</p> : null}
+        {!matches.length && !canCreate ? <p>{t("没有可添加的标签")}</p> : null}
       </> : <>
-        {recent.length ? <><span>最近使用</span>{recent.map((tag, index) => <button key={`recent-${tag.id}`} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>)}</> : null}
-        {available.length ? <><span>所有标签</span>{available.map((tag, index) => { const optionIndex = recent.length + index; return <button key={`all-${tag.id}`} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>; })}</> : <p>暂无已有标签，输入文字即可创建</p>}
+        {recent.length ? <><span>{t("最近使用")}</span>{recent.map((tag, index) => <button key={`recent-${tag.id}`} type="button" role="option" aria-selected={activeIndex === index} className={activeIndex === index ? "is-active" : hoveredIndex === index ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>)}</> : null}
+        {available.length ? <><span>{t("所有标签")}</span>{available.map((tag, index) => { const optionIndex = recent.length + index; return <button key={`all-${tag.id}`} type="button" role="option" aria-selected={activeIndex === optionIndex} className={activeIndex === optionIndex ? "is-active" : hoveredIndex === optionIndex ? "is-hovered" : undefined} onMouseEnter={() => setHoveredIndex(optionIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => add(tag.name)}>{tag.name}</button>; })}</> : <p>{t("暂无已有标签，输入文字即可创建")}</p>}
       </>}
     </div>, portalHost) : null}
   </div>;

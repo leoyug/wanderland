@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { Button } from "@/src/components/ui/Button";
 import { cn } from "@/src/lib/cn";
 import { SearchField, SearchInput } from "./SearchField";
+import { t } from "@/src/i18n/ui";
 
 interface AnimatedSearchFieldProps {
   value: string;
@@ -158,7 +159,7 @@ export function AnimatedSearchField({ value, onChange, placeholder, className, i
         <div ref={placeholderRef} className="t-clear-placeholder" aria-hidden="true">{placeholder}</div>
         <div ref={glowRef} className="t-clear-glow" aria-hidden="true" />
       </div>
-      {value || isClearing ? <Button className="t-clear-btn" variant="ghost" size="icon" aria-label="清除搜索" onPress={clear}><RiCloseLine size={15} /></Button> : <span className="shortcut"><span aria-hidden="true">⌘</span> K</span>}
+      {value || isClearing ? <Button className="t-clear-btn" variant="ghost" size="icon" aria-label={t("清除搜索")} onPress={clear}><RiCloseLine size={15} /></Button> : <span className="shortcut"><span aria-hidden="true">⌘</span> K</span>}
     </SearchField>
   );
 }

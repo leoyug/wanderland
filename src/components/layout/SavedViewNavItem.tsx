@@ -5,6 +5,7 @@ import { Button } from "@/src/components/ui/Button";
 import { Tooltip } from "@/src/components/ui/Tooltip";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
+import { t, tf } from "@/src/i18n/ui";
 
 interface SavedViewNavItemProps {
   view: LibrarySavedView;
@@ -19,6 +20,7 @@ interface SavedViewNavItemProps {
 }
 
 export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDelete, showTooltip = false, isReorderDragging = false, onReorderPointerDown }: SavedViewNavItemProps) {
+  const displayName = view.isSystem ? t(view.name) : view.name;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -100,33 +102,33 @@ export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDe
       {isEditing ? (
         <div className="saved-view-editor">
           {icon}
-          <input ref={inputRef} value={draft} aria-label="快捷视图名称" onChange={(event) => setDraft(event.target.value)} onKeyDown={handleEditKeys} onBlur={finishEditing} />
+          <input ref={inputRef} value={draft} aria-label={t("快捷视图名称")} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleEditKeys} onBlur={finishEditing} />
         </div>
       ) : (
         showTooltip ? (
-          <Tooltip content={view.name} placement="right" offset={10} className="sidebar-tooltip-bubble">
-            <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={view.name}>
+          <Tooltip content={displayName} placement="right" offset={10} className="sidebar-tooltip-bubble">
+            <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={displayName}>
               {icon}
-              <span>{view.name}</span>
+              <span>{displayName}</span>
             </Button>
           </Tooltip>
         ) : (
-          <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={view.name}>
+          <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={displayName}>
             {icon}
-            <span>{view.name}</span>
+            <span>{displayName}</span>
           </Button>
         )
       )}
 
       {!view.isSystem && !isEditing ? (
         <>
-          <button ref={moreButtonRef} type="button" className="saved-view-more" aria-label={`管理快捷视图“${view.name}”`} aria-expanded={isMenuOpen} onClick={() => { setIsMenuOpen((open) => !open); setIsDeleteArmed(false); }}>
+          <button ref={moreButtonRef} type="button" className="saved-view-more" aria-label={tf("管理快捷视图“{name}”", { name: view.name })} aria-expanded={isMenuOpen} onClick={() => { setIsMenuOpen((open) => !open); setIsDeleteArmed(false); }}>
             <RiMore2Line size={16} aria-hidden="true" />
           </button>
           {isMenuOpen && menuPosition ? createPortal(
-            <div ref={menuRef} className="popover-surface saved-view-menu" role="menu" aria-label={`管理${view.name}`} style={menuPosition}>
-              <button type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); setIsEditing(true); }}><RiEditLine size={15} />编辑名称</button>
-              <button type="button" role="menuitem" className="is-danger" onClick={() => { if (isDeleteArmed) onDelete(); else setIsDeleteArmed(true); }}><RiDeleteBinLine size={15} />{isDeleteArmed ? "确认删除" : "删除视图"}</button>
+            <div ref={menuRef} className="popover-surface saved-view-menu" role="menu" aria-label={tf("管理{name}", { name: view.name })} style={menuPosition}>
+              <button type="button" role="menuitem" onClick={() => { setIsMenuOpen(false); setIsEditing(true); }}><RiEditLine size={15} />{t("编辑名称")}</button>
+              <button type="button" role="menuitem" className="is-danger" onClick={() => { if (isDeleteArmed) onDelete(); else setIsDeleteArmed(true); }}><RiDeleteBinLine size={15} />{isDeleteArmed ? t("确认删除") : t("删除视图")}</button>
             </div>,
             document.body,
           ) : null}

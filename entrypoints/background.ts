@@ -7,6 +7,7 @@ import { readRemoteMetadata } from "@/src/capture/readRemoteMetadata";
 import { analyzeSiteIcon } from "@/src/capture/analyzeSiteIcon";
 import type { CaptureResponse, ExtensionRequest, PageCapture } from "@/src/capture/types";
 import { inspirationRepository } from "@/src/db/repository";
+import { APP_LANGUAGE_KEY, normalizeLanguagePreference } from "@/src/i18n/language";
 
 function readableError(error: unknown) {
   return error instanceof Error ? error.message : "未知采集错误";
@@ -184,6 +185,28 @@ export default defineBackground(() => {
     inspirationRepository.recoverInterruptedCaptureTasks(),
     inspirationRepository.recoverInterruptedAiTasks(),
   ]).then(() => processAiQueue()).catch((error) => console.error("Wanderland 初始化失败", error));
+
+  const captureLanguagePorts = new Set<Browser.runtime.Port>();
+  let languageRevision = 0;
+  browser.runtime.onConnect.addListener((port) => {
+    if (port.name !== "capture-language" || port.sender?.id !== browser.runtime.id || !port.sender.tab?.id) return;
+    captureLanguagePorts.add(port);
+    port.onDisconnect.addListener(() => captureLanguagePorts.delete(port));
+    const connectedRevision = languageRevision;
+    void browser.storage.local.get(APP_LANGUAGE_KEY).then((stored) => {
+      if (captureLanguagePorts.has(port) && connectedRevision === languageRevision) {
+        port.postMessage(normalizeLanguagePreference(stored[APP_LANGUAGE_KEY]));
+      }
+    }).catch(() => {
+      if (captureLanguagePorts.has(port) && connectedRevision === languageRevision) port.postMessage("zh-CN");
+    });
+  });
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[APP_LANGUAGE_KEY]) return;
+    languageRevision += 1;
+    const preference = normalizeLanguagePreference(changes[APP_LANGUAGE_KEY].newValue);
+    for (const port of captureLanguagePorts) port.postMessage(preference);
+  });
 
   browser.runtime.onMessage.addListener((request: ExtensionRequest, sender) => {
     if (request.type.startsWith("ai:") && !isTrustedAiMessageSender(

@@ -4,6 +4,7 @@ import { Button } from "@/src/components/ui/Button";
 import { Field } from "@/src/components/ui/Field";
 import { Dialog, DialogTitle, Modal, ModalOverlay } from "@/src/components/ui/Modal";
 import { Switch } from "@/src/components/ui/Switch";
+import { t, tf } from "@/src/i18n/ui";
 
 interface DataImportDialogProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
   const submit = async () => {
     const urls = extractBookmarkUrls(value);
     if (urls.length === 0) {
-      setError("书签 HTML 中没有找到可导入的链接");
+      setError(t("书签 HTML 中没有找到可导入的链接"));
       return;
     }
     let result: { added: number; skipped: number };
@@ -47,13 +48,13 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
     try {
       result = await onImport(urls, enrichMetadata);
     } catch {
-      setError("导入未能写入本地收藏库，请重试。");
+      setError(t("导入未能写入本地收藏库，请重试。"));
       return;
     } finally {
       setIsSubmitting(false);
     }
     if (result.added === 0) {
-      setError(`没有新增内容，${result.skipped} 个链接已存在。`);
+      setError(tf("没有新增内容，{count} 个链接已存在。", { count: result.skipped }));
       return;
     }
     onClose();
@@ -64,14 +65,14 @@ export function DataImportDialog({ isOpen, onClose, onImport }: DataImportDialog
       <Modal className="form-modal import-modal">
         <Dialog className="form-dialog">
           {({ close }) => <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <header className="form-dialog-header"><div className="form-dialog-icon"><RiFileMarkedLine size={20} /></div><div><DialogTitle>导入浏览器书签</DialogTitle><p>导入后先保存链接，描述与标签可在后台逐步补全。</p></div><Button type="button" size="icon" variant="ghost" aria-label="关闭导入" onPress={close}><RiCloseLine size={19} /></Button></header>
+            <header className="form-dialog-header"><div className="form-dialog-icon"><RiFileMarkedLine size={20} /></div><div><DialogTitle>{t("导入浏览器书签")}</DialogTitle><p>{t("导入后先保存链接，描述与标签可在后台逐步补全。")}</p></div><Button type="button" size="icon" variant="ghost" aria-label={t("关闭导入")} onPress={close}><RiCloseLine size={19} /></Button></header>
             <div className="form-dialog-body">
-              <Field className="batch-url-field" label="书签 HTML 内容" placeholder="粘贴浏览器导出的书签 HTML 内容" value={value} onChange={setValue} multiline rows={8} autoFocus />
-              <p className="form-help">书签会作为“网站”保存，已存在的规范化链接会自动跳过。</p>
-              <Switch isSelected={enrichMetadata} onChange={setEnrichMetadata} label="补全网站信息与封面" description="浏览器将一次确认本批次涉及的网站；只读取标题、描述、favicon 和公开 OG 封面，完成后立即撤销全部访问权限。" />
+              <Field className="batch-url-field" label={t("书签 HTML 内容")} placeholder={t("粘贴浏览器导出的书签 HTML 内容")} value={value} onChange={setValue} multiline rows={8} autoFocus />
+              <p className="form-help">{t("书签会作为“网站”保存，已存在的规范化链接会自动跳过。")}</p>
+              <Switch isSelected={enrichMetadata} onChange={setEnrichMetadata} label={t("补全网站信息与封面")} description={t("浏览器将一次确认本批次涉及的网站；只读取标题、描述、favicon 和公开 OG 封面，完成后立即撤销全部访问权限。")} />
               {error ? <p className="form-error" role="alert">{error}</p> : null}
             </div>
-            <footer className="form-dialog-footer"><Button type="button" variant="ghost" isDisabled={isSubmitting} onPress={close}>取消</Button><Button type="submit" variant="primary" isDisabled={isSubmitting}>{isSubmitting ? "正在导入…" : "开始导入"}</Button></footer>
+            <footer className="form-dialog-footer"><Button type="button" variant="ghost" isDisabled={isSubmitting} onPress={close}>{t("取消")}</Button><Button type="submit" variant="primary" isDisabled={isSubmitting}>{isSubmitting ? t("正在导入…") : t("开始导入")}</Button></footer>
           </form>}
         </Dialog>
       </Modal>

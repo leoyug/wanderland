@@ -1,3 +1,4 @@
+import { tf } from "@/src/i18n/ui";
 import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { useEffect, useState } from "react";
@@ -17,13 +18,13 @@ export function CoverArt({ item, large = false, fit = "cover" }: { item: Library
 
   const image = item.cover.image ?? blobUrl;
   if (image && !imageFailed) {
-    return <img key={`${image}:${loadAttempt}`} className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={`${item.title} 封面`} loading={large ? "eager" : "lazy"} decoding="async" onError={() => { if (loadAttempt === 0) setLoadAttempt(1); else setImageFailed(true); }} />;
+    return <img key={`${image}:${loadAttempt}`} className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={tf("{title} 封面", { title: item.title })} loading={large ? "eager" : "lazy"} decoding="async" onError={() => { if (loadAttempt === 0) setLoadAttempt(1); else setImageFailed(true); }} />;
   }
   return (
     <div
       className={cn("cover-art", `cover-${item.cover.motif}`, large && "cover-large")}
       style={{ backgroundColor: item.cover.background, color: item.cover.foreground }}
-      aria-label={`${item.title} 的封面占位预览`}
+      aria-label={tf("{title} 的封面占位预览", { title: item.title })}
       role="img"
     >
       <span>{item.cover.label}</span>

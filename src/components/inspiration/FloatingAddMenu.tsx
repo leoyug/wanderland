@@ -2,6 +2,7 @@ import { RiAddLine, RiArticleLine, RiUserFollowLine, RiWindowLine } from "@remix
 import { useEffect, useRef, useState } from "react";
 import type { SavedItemKind } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
+import { t } from "@/src/i18n/ui";
 
 const actions = [
   { kind: "website", label: "网站", description: "保存网页", icon: RiWindowLine },
@@ -33,14 +34,14 @@ export function FloatingAddMenu({ onSelect, placement = "fixed" }: FloatingAddMe
   return (
     <div className={cn("floating-add", `floating-add-${placement}`, isOpen && "is-open")} onPointerEnter={() => { cancelClose(); setIsOpen(true); }} onPointerLeave={scheduleClose} onFocusCapture={() => setIsOpen(true)} onBlurCapture={scheduleClose}>
       <div className="floating-menu-panel" aria-hidden={!isOpen}>
-        <div className="floating-menu-heading"><span>选择添加类型</span></div>
+        <div className="floating-menu-heading"><span>{t("选择添加类型")}</span></div>
         {actions.map(({ kind, label, description, icon: Icon }) => (
           <button type="button" className="floating-action" key={kind} tabIndex={isOpen ? 0 : -1} onClick={(event) => { event.currentTarget.blur(); onSelect(kind); setIsOpen(false); }}>
-            <Icon size={18} aria-hidden="true" /><span>{label}</span><small>{description}</small>
+            <Icon size={18} aria-hidden="true" /><span>{t(label)}</span><small>{t(description)}</small>
           </button>
         ))}
       </div>
-      <button type="button" className="floating-trigger" aria-label="添加内容" aria-expanded={isOpen} onClick={(event) => event.detail === 0 ? setIsOpen((open) => !open) : setIsOpen(true)}><RiAddLine size={25} /></button>
+      <button type="button" className="floating-trigger" aria-label={t("添加内容")} aria-expanded={isOpen} onClick={(event) => event.detail === 0 ? setIsOpen((open) => !open) : setIsOpen(true)}><RiAddLine size={25} /></button>
     </div>
   );
 }
