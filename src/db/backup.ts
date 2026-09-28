@@ -1,12 +1,27 @@
 import { z } from "zod";
 import DOMPurify from "dompurify";
-import type { PersistentTask, SavedItem, SavedView, Snapshot, Tag } from "@/src/domain/inspiration";
+import type { CoverData, PersistentTask, SavedItem, SavedView, Snapshot, Tag } from "@/src/domain/inspiration";
+import type { ContentDigest, DigestEntry } from "@/src/domain/digest";
 import { db, type WanderlandDatabase } from "./database";
+
+const digestEntrySchema = z.object({
+  id: z.string().min(1), kind: z.enum(["website", "article", "follow"]),
+  title: z.string(), url: z.string().url().refine((value) => /^https?:$/.test(new URL(value).protocol)),
+  siteHost: z.string(), description: z.string(), tags: z.array(z.string()), createdAt: z.number().finite(),
+  siteIcon: z.string().optional(), siteIconAutoBackground: z.literal("dark").optional(), siteIconBackgroundOverride: z.enum(["light", "dark"]).optional(),
+  cover: z.object({ background: z.string(), foreground: z.string(), label: z.string(), motif: z.enum(["type", "grid", "orb"]), image: z.string().optional(), blob: z.string().optional(), width: z.number().optional(), height: z.number().optional(), isUserSelected: z.boolean().optional() }),
+});
+const digestSchema = z.object({
+  id: z.string().min(1), kind: z.enum(["daily", "weekly"]),
+  periodStart: z.number().finite(), periodEnd: z.number().finite(), title: z.string(), introduction: z.string(), author: z.literal("Leo"),
+  entries: z.array(digestEntrySchema), retrospective: z.array(digestEntrySchema).max(3), createdAt: z.number().finite(), readAt: z.number().finite().optional(),
+}).refine((value) => value.periodEnd > value.periodStart);
 
 const backupSchema = z.object({
   format: z.literal("wanderland-backup"),
   version: z.literal(1),
   exportedAt: z.number().finite(),
+  digests: z.array(digestSchema).optional(),
   savedItems: z.array(z.object({
     id: z.string().min(1), kind: z.enum(["website", "article", "follow"]),
     canonicalUrl: z.string().url(), originalUrl: z.string().url(),
@@ -32,7 +47,7 @@ function encodeBytes(bytes: Uint8Array) {
   return btoa(value);
 }
 
-async function encodeCover(item: SavedItem) {
+async function encodeCover<T extends { cover: CoverData }>(item: T) {
   const blob = item.cover.blob;
   return { ...item, cover: { ...item.cover, blob: blob ? `data:${blob.type || "application/octet-stream"};base64,${encodeBytes(new Uint8Array(await blob.arrayBuffer()))}` : undefined } };
 }
@@ -40,23 +55,37 @@ async function encodeCover(item: SavedItem) {
 function decodeCover(item: Backup["savedItems"][number]): SavedItem {
   const { blob, ...cover } = item.cover;
   if (!blob) return { ...item, cover } as SavedItem;
+  return { ...item, cover: { ...cover, blob: decodeCoverBlob(blob) } } as SavedItem;
+}
+
+function decodeCoverBlob(blob: string) {
   const match = /^data:([\w.+-]+\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(blob);
   if (!match) throw new Error("备份中的封面图片格式无效。");
   const binary = atob(match[2]!);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  return { ...item, cover: { ...cover, blob: new Blob([bytes], { type: match[1] }) } } as SavedItem;
+  return new Blob([bytes], { type: match[1] });
+}
+
+function decodeDigestEntry(entry: z.infer<typeof digestEntrySchema>): DigestEntry {
+  const { blob, ...cover } = entry.cover;
+  return { ...entry, cover: { ...cover, ...(blob ? { blob: decodeCoverBlob(blob) } : {}) } };
+}
+
+function decodeDigest(digest: z.infer<typeof digestSchema>): ContentDigest {
+  return { ...digest, entries: digest.entries.map(decodeDigestEntry), retrospective: digest.retrospective.map(decodeDigestEntry) };
 }
 
 export async function createBackup(database: WanderlandDatabase = db) {
   // Read every store in one readonly transaction to produce a consistent snapshot.
-  const [savedItems, snapshots, tags, savedViews, tasks] = await database.transaction("r", database.savedItems, database.snapshots, database.tags, database.savedViews, database.tasks, async () => Promise.all([
-    database.savedItems.toArray(), database.snapshots.toArray(), database.tags.toArray(), database.savedViews.toArray(), database.tasks.toArray(),
+  const [savedItems, snapshots, tags, savedViews, tasks, digests] = await database.transaction("r", [database.savedItems, database.snapshots, database.tags, database.savedViews, database.tasks, database.digests], async () => Promise.all([
+    database.savedItems.toArray(), database.snapshots.toArray(), database.tags.toArray(), database.savedViews.toArray(), database.tasks.toArray(), database.digests.toArray(),
   ]));
   return {
     format: "wanderland-backup" as const,
     version: 1 as const,
     exportedAt: Date.now(),
     savedItems: await Promise.all(savedItems.map(encodeCover)),
+    digests: await Promise.all(digests.map(async (digest) => ({ ...digest, entries: await Promise.all(digest.entries.map(encodeCover)), retrospective: await Promise.all(digest.retrospective.map(encodeCover)) }))),
     snapshots, tags, savedViews, tasks: tasks.map(({ lastError: _lastError, ...task }) => task),
   };
 }
@@ -66,12 +95,14 @@ export function parseBackup(value: unknown): Backup {
   if (!result.success) throw new Error("备份格式无效或版本不受支持。请选择 Wanderland 导出的 JSON 文件。");
   const backup = result.data;
   const unique = (values: string[]) => values.length === new Set(values).size;
+  if (!unique((backup.digests ?? []).map((digest) => digest.id))) throw new Error("备份中包含重复简报，未进行恢复。");
   if (!unique(backup.savedItems.map((item) => item.id)) || !unique(backup.savedItems.map((item) => `${item.kind}\0${item.canonicalUrl}`)) || !unique(backup.tags.map((tag) => tag.id)) || !unique(backup.tags.map((tag) => tag.normalizedName)) || !unique(backup.snapshots.map((snapshot) => snapshot.id)) || !unique(backup.savedViews.map((view) => view.id)) || !unique(backup.tasks.map((task) => task.id))) throw new Error("备份中包含重复记录，未进行恢复。");
   const itemIds = new Set(backup.savedItems.map((item) => item.id));
   const tagIds = new Set(backup.tags.map((tag) => tag.id));
   const snapshotIds = new Set(backup.snapshots.map((snapshot) => snapshot.id));
   if (backup.savedItems.some((item) => item.tagIds.some((id) => !tagIds.has(id)) || (item.snapshotId && !snapshotIds.has(item.snapshotId)) || !/^https?:$/.test(new URL(item.canonicalUrl).protocol) || !/^https?:$/.test(new URL(item.originalUrl).protocol)) || backup.snapshots.some((snapshot) => !itemIds.has(snapshot.itemId)) || backup.tasks.some((task) => !itemIds.has(task.itemId)) || backup.savedViews.some((view) => view.tagIds.some((id) => !tagIds.has(id)))) throw new Error("备份中的网址或关联数据无效，未进行恢复。");
   for (const item of backup.savedItems) decodeCover(item);
+  for (const digest of backup.digests ?? []) decodeDigest(digest);
   return backup;
 }
 
@@ -79,7 +110,7 @@ export async function restoreBackup(backup: Backup, database: WanderlandDatabase
   // Revalidate at the write boundary, even when called without the import dialog.
   const valid = parseBackup(backup);
   const items = valid.savedItems.map(decodeCover);
-  return database.transaction("rw", database.savedItems, database.snapshots, database.tags, database.savedViews, database.tasks, async () => {
+  return database.transaction("rw", [database.savedItems, database.snapshots, database.tags, database.savedViews, database.tasks, database.digests], async () => {
     const [existingItems, existingTags, existingViews, existingTasks, existingSnapshots] = await Promise.all([
       database.savedItems.toArray(), database.tags.toArray(), database.savedViews.toArray(), database.tasks.toArray(), database.snapshots.toArray(),
     ]);
@@ -133,6 +164,9 @@ export async function restoreBackup(backup: Backup, database: WanderlandDatabase
     await database.snapshots.bulkAdd(snapshotsToAdd);
     await database.tasks.bulkAdd(tasksToAdd);
     await database.savedViews.bulkAdd(viewsToAdd);
+    for (const digest of valid.digests ?? []) {
+      if (!await database.digests.get(digest.id)) await database.digests.add(decodeDigest(digest));
+    }
     const counts = new Map<string, number>();
     for (const item of [...existingItems, ...itemsToAdd]) for (const tagId of item.tagIds) counts.set(tagId, (counts.get(tagId) ?? 0) + 1);
     for (const tagId of new Set([...existingTags, ...tagsToAdd].map((tag) => tag.id))) await database.tags.update(tagId, { usageCount: counts.get(tagId) ?? 0 });

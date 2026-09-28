@@ -1,7 +1,7 @@
 import { RiArrowRightUpLine, RiCloseLine, RiRefreshLine, RiSearchLine, RiShieldCheckLine } from "@remixicon/react";
 import { rise } from "cube-motion";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { endpointPermissionPattern, defaultAiSettings } from "@/src/ai/config";
 import type { AiSettings, AiSettingsView, AiTaskSummary, ApiKeyStorage } from "@/src/ai/types";
 import { aiProviderPresets } from "@/src/ai/presets";
@@ -22,6 +22,10 @@ import { setLanguagePreference, type LanguagePreference } from "@/src/i18n/langu
 import { useLanguagePreference } from "@/src/i18n/useLanguage";
 import { t, tf } from "@/src/i18n/ui";
 import { formatUiDate } from "@/src/i18n/date";
+import { DigestSettings } from "@/src/features/digest/DigestSettings";
+import { DigestHistoryPage } from "@/src/features/digest/DigestHistoryPage";
+import type { DigestKind } from "@/src/domain/digest";
+import { SettingsHeader, SettingsSectionHeading, SettingsCard, SettingsRow } from "./SettingsPrimitives";
 import { version as packageVersion } from "../../../package.json";
 
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
@@ -43,26 +47,6 @@ function sendExtensionMessage<T>(request: ExtensionRequest) {
     return Promise.reject(new Error(t("AI 设置需要在已加载的浏览器扩展页面中使用。")));
   }
   return browser.runtime.sendMessage(request) as Promise<T>;
-}
-
-function SettingsHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
-  return <header className="settings-page-header"><div><h1>{title}</h1>{description ? <p>{description}</p> : null}</div>{action}</header>;
-}
-
-function SettingsSectionHeading({ title, description }: { title: string; description: string }) {
-  return <div className="settings-section-heading"><h2>{title}</h2><p>{description}</p></div>;
-}
-
-function SettingsCard({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`settings-card ${className}`.trim()}>{children}</div>;
-}
-
-function SettingsRow({ title, description, control, children }: { title: string; description?: string; control?: ReactNode; children?: ReactNode }) {
-  return <div className="settings-card-row">
-    <div className="settings-card-row-copy"><strong>{title}</strong>{description ? <span>{description}</span> : null}</div>
-    {control ? <div className="settings-card-row-control">{control}</div> : null}
-    {children ? <div className="settings-card-row-detail">{children}</div> : null}
-  </div>;
 }
 
 function extractBookmarkUrls(value: string) {
@@ -485,26 +469,13 @@ function AboutSettings() {
   </div>;
 }
 
-function PlaceholderSettings() {
-  return <div className="settings-form">
-    <SettingsHeader title={t("内容简报")} description={t("定期回顾新收藏，发现值得继续探索的内容。")} />
-    <section className="settings-form-section">
-      <SettingsSectionHeading title={t("简报类型")} description={t("生成与往期记录将在后续版本开放。")} />
-      <SettingsCard>
-        <SettingsRow title={t("今日总结")} description={t("从今天新增的收藏中提炼主题，生成一份简短总结。")} control={<div className="settings-list-actions"><Button variant="secondary" isDisabled>{t("生成")}</Button><Button variant="secondary" isDisabled>{t("往期")}</Button></div>} />
-        <SettingsRow title={t("一周简报")} description={t("每周自动汇总新收藏，并穿插值得重温的旧内容。")} control={<Button variant="secondary" isDisabled>{t("往期")}</Button>} />
-      </SettingsCard>
-    </section>
-  </div>;
-}
-
-export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void }) {
-  const [section, setSection] = useState<SettingsSection>("appearance");
+export function SettingsPage({ onBackToLibrary, digestHistory, initialSection = "appearance" }: { onBackToLibrary: () => void; digestHistory?: DigestKind; initialSection?: SettingsSection }) {
+  const [section, setSection] = useState<SettingsSection>(initialSection);
   const contentRef = useRef<HTMLDivElement>(null);
   const riseAnimations = useRef<Animation[]>([]);
   const items = useLiveQuery(() => inspirationRepository.listLibraryItems(), []) ?? [];
   const views = useLiveQuery(() => inspirationRepository.listLibrarySavedViews(), []) ?? [];
-  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : section === "appearance" ? <AppearanceSettings /> : section === "about" ? <AboutSettings /> : <PlaceholderSettings />;
+  const sectionContent = section === "bookmarks" ? <BookmarkSettings /> : section === "tags" ? <TagsSettings /> : section === "ai" ? <AiSettings /> : section === "backup" ? <BackupSettings /> : section === "archive" ? <ArchiveSettings /> : section === "appearance" ? <AppearanceSettings /> : section === "about" ? <AboutSettings /> : digestHistory ? <DigestHistoryPage key={digestHistory} kind={digestHistory} /> : <DigestSettings />;
 
   useLayoutEffect(() => {
     riseAnimations.current.forEach((animation) => animation.cancel());
@@ -513,7 +484,7 @@ export function SettingsPage({ onBackToLibrary }: { onBackToLibrary: () => void 
 
   useEffect(() => () => riseAnimations.current.forEach((animation) => animation.cancel()), []);
 
-  return <AppShell items={items} activeScope="all" activeSavedView={null} savedViews={views} onScopeChange={() => undefined} onSavedViewChange={() => undefined} onSavedViewRename={() => undefined} onSavedViewDelete={() => undefined} onSavedViewMove={() => undefined} mode="settings" activeSettingsSection={section} onSettingsSectionChange={setSection} onBackToLibrary={onBackToLibrary}>
-    <div className="settings-page"><div ref={contentRef} className="settings-page-content">{sectionContent}</div></div>
+  return <AppShell items={items} activeScope="all" activeSavedView={null} savedViews={views} onScopeChange={() => undefined} onSavedViewChange={() => undefined} onSavedViewRename={() => undefined} onSavedViewDelete={() => undefined} onSavedViewMove={() => undefined} mode="settings" activeSettingsSection={section} onSettingsSectionChange={(next) => { setSection(next); if (digestHistory) window.location.hash = "#settings/digest"; }} onBackToLibrary={onBackToLibrary}>
+    <div className="settings-page"><div ref={contentRef} className={`settings-page-content${section === "digest" && digestHistory ? " digest-history-content" : ""}`}>{sectionContent}</div></div>
   </AppShell>;
 }

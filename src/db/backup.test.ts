@@ -68,3 +68,29 @@ describe("local backup", () => {
     source.close(); target.close();
   });
 });
+
+describe("digest backup", () => {
+  it("round-trips saved editions and blobs without replacing existing editions", async () => {
+    const { DigestRepository } = await import("./digestRepository");
+    const source = makeDatabase();
+    const repository = new InspirationRepository(source);
+    const created = await repository.createSavedItem({ kind: "website", url: "https://example.com/digest", title: "Saved title" });
+    await source.savedItems.update(created.item.id, { cover: { ...created.item.cover, blob: new Blob(["edition-cover"], { type: "image/png" }) } });
+    const digests = new DigestRepository(source);
+    const digest = await digests.generate("daily");
+    await digests.markRead(digest.id);
+    const exported = parseBackup(JSON.parse(JSON.stringify(await createBackup(source))));
+    expect(exported.digests?.[0]?.entries[0]?.cover.blob).toMatch(/^data:image\/png;base64,/);
+    const target = makeDatabase();
+    await restoreBackup(exported, target);
+    const restored = await target.digests.get(digest.id);
+    expect(restored?.readAt).toBeTypeOf("number");
+    expect(await restored?.entries[0]?.cover.blob?.text()).toBe("edition-cover");
+    await target.digests.update(digest.id, { title: "Keep this edition" });
+    await restoreBackup(exported, target);
+    expect((await target.digests.get(digest.id))?.title).toBe("Keep this edition");
+    const { digests: _digests, ...legacy } = exported;
+    expect(() => parseBackup(legacy)).not.toThrow();
+    source.close(); target.close();
+  });
+});

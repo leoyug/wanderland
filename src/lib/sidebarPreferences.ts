@@ -1,7 +1,7 @@
 export const SIDEBAR_WIDTH_DEFAULT = 220;
 export const SIDEBAR_WIDTH_MIN = 176;
 export const SIDEBAR_WIDTH_MAX = 320;
-export const SIDEBAR_WIDTH_COLLAPSED = 72;
+export const SIDEBAR_WIDTH_COLLAPSED = 64;
 export const SIDEBAR_COLLAPSE_THRESHOLD = 160;
 export const SIDEBAR_WIDTH_SNAP_THRESHOLD = 20;
 

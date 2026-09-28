@@ -3,7 +3,7 @@ import type { LibraryItem } from "@/src/domain/inspiration";
 import { cn } from "@/src/lib/cn";
 import { useEffect, useState } from "react";
 
-export function CoverArt({ item, large = false, fit = "cover" }: { item: LibraryItem; large?: boolean; fit?: "cover" | "contain" }) {
+export function CoverArt({ item, large = false, fit = "cover", eager = false, onUnavailable }: { item: Pick<LibraryItem, "title" | "cover">; large?: boolean; fit?: "cover" | "contain"; eager?: boolean; onUnavailable?: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [blobUrl, setBlobUrl] = useState<string>();
@@ -18,7 +18,7 @@ export function CoverArt({ item, large = false, fit = "cover" }: { item: Library
 
   const image = item.cover.image ?? blobUrl;
   if (image && !imageFailed) {
-    return <img key={`${image}:${loadAttempt}`} className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={tf("{title} 封面", { title: item.title })} loading={large ? "eager" : "lazy"} decoding="async" onError={() => { if (loadAttempt === 0) setLoadAttempt(1); else setImageFailed(true); }} />;
+    return <img key={`${image}:${loadAttempt}`} className={cn("cover-image", large && "cover-large", fit === "contain" && "cover-contain")} src={image} alt={tf("{title} 封面", { title: item.title })} loading={large || eager ? "eager" : "lazy"} decoding="async" onError={() => { if (loadAttempt === 0) setLoadAttempt(1); else { setImageFailed(true); onUnavailable?.(); } }} />;
   }
   return (
     <div

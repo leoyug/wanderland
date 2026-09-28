@@ -14,6 +14,6 @@ describe("normalizeSidebarWidth", () => {
   });
 
   it("keeps the collapsed threshold intact", () => {
-    expect(normalizeSidebarWidth(160)).toBe(72);
+    expect(normalizeSidebarWidth(160)).toBe(64);
   });
 });

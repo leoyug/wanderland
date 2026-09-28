@@ -1,6 +1,10 @@
 import { RiAddLine, RiArrowLeftLine, RiArrowUpDownLine, RiCheckLine, RiErrorWarningLine, RiFunctionLine, RiListCheck, RiListCheck2, RiPriceTag3Line, RiSearchLine, RiSettings3Line } from "@remixicon/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { FloatingAddMenu } from "@/src/components/inspiration/FloatingAddMenu";
+import { DigestEditionCard } from "@/src/components/inspiration/DigestEditionCard";
+import { buildDigest } from "@/src/domain/digest";
+import { DigestReadingRail } from "@/src/features/digest/DigestReadingRail";
+import { digestEntryAnchor } from "@/src/features/digest/readingNavigation";
 import { InspirationCard } from "@/src/components/inspiration/InspirationCard";
 import { InspirationListItem } from "@/src/components/inspiration/InspirationListItem";
 import { SavedViewReorderList } from "@/src/components/layout/SavedViewReorderList";
@@ -20,10 +24,13 @@ import { useToast } from "@/src/components/ui/Toast";
 import { inspirationItems } from "@/src/data/demo";
 import type { LibrarySavedView } from "@/src/domain/inspiration";
 
+const digestPreview = buildDigest("weekly", inspirationItems[0]!.createdAt, inspirationItems);
+
 const colors = [
   { name: "页面背景", token: "--color-canvas", value: "#F4F1ED" },
   { name: "内容表面", token: "--color-surface", value: "#FFFFFF" },
   { name: "次级表面", token: "--color-surface-secondary", value: "#F6F5F4" },
+  { name: "交互悬停表面", token: "--color-surface-hover", value: "#F2F2F2" },
   { name: "默认描边", token: "--color-border-default", value: "#F2F0ED" },
   { name: "主文字", token: "--color-ink", value: "#2E2E2E" },
   { name: "次级文字", token: "--color-text", value: "#525252" },
@@ -44,6 +51,7 @@ const darkColorValues: Record<string, string> = {
   "--color-canvas": "#121212",
   "--color-surface": "#181818",
   "--color-surface-secondary": "#202020",
+  "--color-surface-hover": "#2A2A2A",
   "--color-border-default": "#292929",
   "--color-ink": "#F5F5F5",
   "--color-text": "#DEDEDE",
@@ -82,7 +90,7 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
   const [previewViews, setPreviewViews] = useState<LibrarySavedView[]>([
     { id: "preview-read-later", name: "稍后阅读", isSystem: true, scope: "article", tagIds: [], tags: [], sortOrder: 0, createdAt: 0, updatedAt: 0 },
     { id: "preview-design", name: "设计灵感", isSystem: false, scope: "website", tagIds: ["design"], tags: ["设计灵感"], sortOrder: 1, createdAt: 0, updatedAt: 0 },
-    { id: "preview-dev", name: "开发资源", isSystem: false, scope: "all", tagIds: ["components"], tags: ["组件库"], sortOrder: 2, createdAt: 0, updatedAt: 0 },
+    { id: "preview-dev", name: "开发资源与前端交互动效参考资料", isSystem: false, scope: "all", tagIds: ["components"], tags: ["组件库"], sortOrder: 2, createdAt: 0, updatedAt: 0 },
   ]);
   const [activePreviewView, setActivePreviewView] = useState("preview-design");
   const [previewTags, setPreviewTags] = useState<string[]>(["design"]);
@@ -178,6 +186,14 @@ export function DesignSystemPage({ onBack }: { onBack: () => void }) {
             <div><span>紧凑卡片</span><div className="compact-preview-grid">{inspirationItems.slice(0, 3).map((item) => <InspirationCard key={item.id} item={item} layout="compact" onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
             <div><span>列表排列</span><div className="inspiration-list">{inspirationItems.slice(0, 3).map((item) => <InspirationListItem key={item.id} item={item} onOpen={() => undefined} onTagClick={() => undefined} onToggleFavorite={() => undefined} />)}</div></div>
           </div>
+        </PreviewSection>
+
+        <PreviewSection title="简报" description="往期封面卡片复用 Card、CoverArt 与现有 token；红点只表示未读。此处使用演示内容。">
+          <div className="digest-edition-grid">
+            <DigestEditionCard digest={digestPreview} href="#design-system" />
+            <DigestEditionCard digest={{ ...digestPreview, readAt: Date.now() }} href="#design-system" />
+          </div>
+          <DigestReadingRail preview visible sections={[{ id: "preview-websites", label: "网站", entries: digestPreview.entries.slice(0, 3) }, { id: "preview-articles", label: "文章", entries: digestPreview.entries.slice(3, 5) }]} activeSectionId="preview-websites" activeAnchorId={digestEntryAnchor("preview-websites", digestPreview.entries[0]!.id)} />
         </PreviewSection>
 
         <PreviewSection title="添加入口" description="悬停、聚焦或点击主按钮后，展开带背景模糊的内容类型菜单，文字保持在按钮点击区域内。">

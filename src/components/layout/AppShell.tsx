@@ -225,7 +225,7 @@ export function AppShell({ items, activeScope, activeSavedView, savedViews, onSc
         {sidebarScrollbar.isVisible ? <div className="sidebar-scrollbar" aria-hidden="true" onPointerDown={handleScrollbarPointerDown} onPointerMove={handleScrollbarPointerMove} onPointerUp={stopScrollbarDrag} onPointerCancel={stopScrollbarDrag}><div className="sidebar-scrollbar-thumb" style={{ height: sidebarScrollbar.height, transform: `translateY(${sidebarScrollbar.top}px)` }} /></div> : null}
         </div>
         <div className="sidebar-bottom">
-          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>{t("返回WEBLOOM")}</span></button> : isCompactSidebar ? <Tooltip content={t("设置")} placement="right" offset={10} className="sidebar-tooltip-bubble">{settingsButton}</Tooltip> : settingsButton}
+          {mode === "settings" ? <button type="button" className="nav-item sidebar-tool settings-return" aria-label={t("返回")} onClick={onBackToLibrary}><RiArrowLeftLine size={17} aria-hidden="true" /><span>{t("返回")}</span></button> : isCompactSidebar ? <Tooltip content={t("设置")} placement="right" offset={10} className="sidebar-tooltip-bubble">{settingsButton}</Tooltip> : settingsButton}
         </div>
       </aside>
       <main className="main-content">{children}</main>

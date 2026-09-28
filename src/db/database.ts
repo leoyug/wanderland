@@ -1,9 +1,12 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { PersistentTask, SavedItem, SavedView, Snapshot, Tag } from "@/src/domain/inspiration";
 
+import type { ContentDigest } from "@/src/domain/digest";
+
 export const DATABASE_NAME = "wanderland";
 
 export class WanderlandDatabase extends Dexie {
+  digests!: EntityTable<ContentDigest, "id">;
   savedItems!: EntityTable<SavedItem, "id">;
   snapshots!: EntityTable<Snapshot, "id">;
   tags!: EntityTable<Tag, "id">;
@@ -106,6 +109,9 @@ export class WanderlandDatabase extends Dexie {
         await table.update(view.id, { name });
         names.add(name);
       }
+    });
+    this.version(7).stores({
+      digests: "id,kind,periodStart,periodEnd,createdAt,readAt",
     });
   }
 }

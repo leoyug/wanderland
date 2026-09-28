@@ -6,6 +6,7 @@ html[data-theme="dark"] {
   --color-surface: #181818;
   --color-surface-secondary: #202020;
   --color-surface-subtle: #262626;
+  --color-surface-hover: rgb(255 255 255 / 8%);
   --color-surface-muted: #2c2c2c;
   --color-sidebar-active: #303030;
   --color-surface-glass: rgb(24 24 24 / 88%);
@@ -50,6 +51,7 @@ html[data-theme="dark"] {
     --color-surface: color(display-p3 0.09412 0.09412 0.09412);
     --color-surface-secondary: color(display-p3 0.12549 0.12549 0.12549);
     --color-surface-subtle: color(display-p3 0.14902 0.14902 0.14902);
+    --color-surface-hover: color(display-p3 1 1 1 / 8%);
     --color-surface-muted: color(display-p3 0.17255 0.17255 0.17255);
     --color-sidebar-active: color(display-p3 0.18824 0.18824 0.18824);
     --color-surface-glass: color(display-p3 0.09412 0.09412 0.09412 / 88%);

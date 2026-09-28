@@ -1,5 +1,5 @@
 import { RiDeleteBinLine, RiEditLine, RiMore2Line } from "@remixicon/react";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/src/components/ui/Button";
 import { Tooltip } from "@/src/components/ui/Tooltip";
@@ -27,9 +27,30 @@ export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDe
   const [draft, setDraft] = useState(view.name);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const labelTextRef = useRef<HTMLSpanElement>(null);
+  const [labelOverflow, setLabelOverflow] = useState(0);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ left: number; top: number }>();
+
+  useLayoutEffect(() => {
+    const label = labelRef.current;
+    const text = labelTextRef.current;
+    if (!label || !text) return;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const difference = text.scrollWidth - label.clientWidth;
+      setLabelOverflow(label.clientWidth > 0 && difference > 1 ? difference + 16 : 0);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(label);
+    observer.observe(text);
+    measure();
+    void document.fonts.ready.then(measure);
+    return () => { disposed = true; observer.disconnect(); };
+  }, [displayName, isEditing, showTooltip]);
 
   useEffect(() => {
     if (isEditing) inputRef.current?.select();
@@ -105,19 +126,14 @@ export function SavedViewNavItem({ view, icon, isActive, onPress, onRename, onDe
           <input ref={inputRef} value={draft} aria-label={t("快捷视图名称")} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleEditKeys} onBlur={finishEditing} />
         </div>
       ) : (
-        showTooltip ? (
-          <Tooltip content={displayName} placement="right" offset={10} className="sidebar-tooltip-bubble">
-            <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={displayName}>
-              {icon}
-              <span>{displayName}</span>
-            </Button>
-          </Tooltip>
-        ) : (
+        <Tooltip content={displayName} placement="right" offset={10} className="sidebar-tooltip-bubble saved-view-tooltip" isDisabled={isMenuOpen || isReorderDragging || (!showTooltip && labelOverflow === 0)}>
           <Button type="button" variant="ghost" onPress={onPress} className={cn("nav-item saved-view-select", isActive && "is-active")} aria-label={displayName}>
             {icon}
-            <span>{displayName}</span>
+            <span ref={labelRef} className={cn("saved-view-label", labelOverflow > 0 && "is-overflowing")} style={{ "--saved-view-label-travel": `${-labelOverflow}px`, "--saved-view-label-duration": `${Math.max(2.4, labelOverflow / 24 + 1.2)}s` } as CSSProperties}>
+              <span ref={labelTextRef} className="saved-view-label-text">{displayName}</span>
+            </span>
           </Button>
-        )
+        </Tooltip>
       )}
 
       {!view.isSystem && !isEditing ? (
